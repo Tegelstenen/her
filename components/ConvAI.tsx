@@ -26,7 +26,7 @@ async function getSignedUrl(): Promise<string> {
   return data.signedUrl;
 }
 
-export function ConvAI() {
+export function ConvAI({ user_name, goals }: Readonly<{ user_name: string; goals: string }>) {
   const conversation = useConversation({
     onConnect: () => {
       console.log("connected");
@@ -50,7 +50,13 @@ export function ConvAI() {
       return;
     }
     const signedUrl = await getSignedUrl();
-    const conversationId = await conversation.startSession({ signedUrl });
+    const conversationId = await conversation.startSession({ 
+      signedUrl, 
+      dynamicVariables: {
+        user_name: user_name,
+        goals: goals
+      },
+    });
     console.log(conversationId);
   }
 
@@ -90,7 +96,7 @@ export function ConvAI() {
               disabled={
                 conversation !== null && conversation.status === "connected"
               }
-              onClick={startConversation}
+              onClick={() => startConversation()}
             >
               Start conversation
             </Button>
