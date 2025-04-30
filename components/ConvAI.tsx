@@ -6,7 +6,8 @@ import { useCallback } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
+
+import EnhancedOrb from "./enhanced-orb";
 
 async function requestMicrophonePermission() {
 	try {
@@ -82,16 +83,16 @@ export function ConvAI({
 						</CardTitle>
 					</CardHeader>
 					<div className={"flex flex-col gap-y-4 text-center"}>
-						<div
-							className={cn(
-								"orb mx-12 my-16",
-								conversation.status === "connected" && conversation.isSpeaking
-									? "orb-active animate-orb"
-									: conversation.status === "connected"
-										? "animate-orb-slow orb-inactive"
-										: "orb-inactive",
-							)}
-						></div>
+						<div className={"mx-12 my-16 h-44 w-44"}>
+							<EnhancedOrb
+								speaking={
+									conversation.status === "connected" && conversation.isSpeaking
+								}
+								connected={conversation.status === "connected"}
+								color1="#2792DC" // Primary color - you can customize this
+								color2="#9CE6E6" // Secondary color - you can customize this
+							/>
+						</div>
 
 						<Button
 							variant={"outline"}
