@@ -5,6 +5,27 @@ import { phoneNumber } from "better-auth/plugins";
 import { db } from "@/lib/server/db/db";
 import * as schema from "@/lib/server/db/schemas/auth-schema";
 
+// Function to send OTP using our API route
+const sendOtpUsingApi = async (phoneNumber: string, code: string) => {
+	try {
+		// In Node.js environment, we need an absolute URL
+		const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+		const response = await fetch(`${baseUrl}/api/otp`, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+			},
+			body: JSON.stringify({ phoneNumber, code }),
+		});
+
+		const result = await response.json();
+		return result;
+	} catch (error) {
+		console.error("Error sending OTP:", error);
+		return { success: false, error };
+	}
+};
+
 export const auth = betterAuth({
 	database: drizzleAdapter(db, {
 		provider: "pg",
@@ -22,6 +43,9 @@ export const auth = betterAuth({
 				console.log(`🔑 OTP Code for ${phoneNumber}: ${code}`);
 				console.log(`-----------------------------------`);
 
+				// Send the OTP code using our API endpoint
+				await sendOtpUsingApi(phoneNumber, code);
+
 				// Using request parameter to satisfy linter
 				if (request && request.headers) {
 					console.log(
@@ -29,22 +53,6 @@ export const auth = betterAuth({
 						request.headers.get?.("user-agent") || "unknown",
 					);
 				}
-
-				// In a production environment, you would implement SMS delivery here
-				// Example using Twilio:
-				/*
-                const accountSid = process.env.TWILIO_ACCOUNT_SID;
-                const authToken = process.env.TWILIO_AUTH_TOKEN;
-                const twilioNumber = process.env.TWILIO_PHONE_NUMBER;
-                
-                const client = require('twilio')(accountSid, authToken);
-                
-                return client.messages.create({
-                    body: `Your Her verification code is: ${code}`,
-                    from: twilioNumber,
-                    to: phoneNumber
-                });
-                */
 
 				return Promise.resolve();
 			},
