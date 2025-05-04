@@ -3,7 +3,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import React, { useState } from "react";
 
-import OrganicSphere from "@/components/moving-sphere";
+import { ConvAI } from "@/components/conv-ai";
 import QuestionBox from "@/components/question-box";
 
 export default function OnboardingPage() {
@@ -17,8 +17,7 @@ export default function OnboardingPage() {
 	const lineWidth = 80;
 	const sphereWidth = 80;
 	const boxWidth = 20;
-	const sphereShift = lineWidth;
-	const groupShift = 120;
+	const groupShift = 140;
 
 	const questions = [
 		{
@@ -47,8 +46,15 @@ export default function OnboardingPage() {
 	const handleSubmit = () => setStep(0);
 
 	return (
-		<div className="relative flex min-h-screen w-full items-center justify-center overflow-hidden">
+		<motion.div
+			initial={{ opacity: 0 }}
+			animate={{ opacity: 1 }}
+			exit={{ opacity: 0 }}
+			transition={{ duration: 0.3, ease: "easeInOut" }}
+			className="relative flex min-h-screen w-full items-center justify-center overflow-hidden"
+		>
 			<motion.div
+				data-fade-content
 				className="relative flex h-full min-h-screen w-full items-center justify-center"
 				animate={{ x: step === 1 ? -groupShift : 0 }}
 				transition={{
@@ -63,7 +69,7 @@ export default function OnboardingPage() {
 					className={step === 0 ? "cursor-pointer" : undefined}
 					style={{ zIndex: 2 }}
 					initial={false}
-					animate={{ x: step === 1 ? -sphereShift : 0 }}
+					animate={{ x: step === 1 ? -lineWidth : 0 }}
 					transition={{
 						type: "spring",
 						stiffness: 60,
@@ -75,11 +81,11 @@ export default function OnboardingPage() {
 					whileTap={step === 0 ? { scale: 0.97 } : {}}
 					onClick={() => step === 0 && setStep(1)}
 				>
-					<OrganicSphere width="400px" height="400px" />
+					<ConvAI user_name={"temp"} goals={"temp"} />
 				</motion.div>
 
 				<motion.div
-					className="absolute h-[1.5px] rounded-full bg-neutral-700"
+					className="absolute h-[1px] rounded-full bg-neutral-700"
 					initial={{ width: 0, opacity: 0 }}
 					animate={{
 						width: step === 1 ? lineWidth : 0,
@@ -117,6 +123,6 @@ export default function OnboardingPage() {
 					)}
 				</AnimatePresence>
 			</motion.div>
-		</div>
+		</motion.div>
 	);
 }

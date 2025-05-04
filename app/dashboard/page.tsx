@@ -9,7 +9,7 @@ export default function DashboardPage() {
 		<div className="relative flex min-h-screen w-full items-center justify-center overflow-hidden">
 			<motion.div
 				data-fade-content
-				className="flex h-[400px] w-[500px] items-center justify-center"
+				className="flex items-center justify-center"
 				initial={{ opacity: 0 }}
 				animate={{ opacity: 1 }}
 				exit={{ opacity: 0 }}

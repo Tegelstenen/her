@@ -385,7 +385,7 @@ const MovingSphere: React.FC<MovingSphereProps> = ({
 			0.1,
 			100,
 		);
-		camera.position.z = 5;
+		camera.position.z = 3.5;
 		const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 		renderer.setSize(mount.clientWidth, mount.clientHeight);
 		renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));

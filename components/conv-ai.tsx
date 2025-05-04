@@ -69,7 +69,7 @@ export function ConvAI({
 		<div className="flex items-center justify-center gap-x-4">
 			<div className="flex flex-col items-center text-center">
 				<button
-					className="group flex h-[400px] w-[200px] cursor-pointer items-center justify-center transition-shadow duration-300"
+					className="group flex h-[250px] w-[250px] cursor-pointer items-center justify-center transition-shadow duration-300"
 					onClick={() => {
 						if (conversation.status !== "connected") {
 							startConversation();
@@ -100,12 +100,12 @@ export function ConvAI({
 						}
 					/>
 				</button>
-				<span className="text-lg font-semibold text-white">
+				<span className="text-white">
 					{conversation.status === "connected"
 						? conversation.isSpeaking
 							? "Agent is speaking"
 							: "Agent is listening"
-						: "Disconnected"}
+						: "Press sphere start conversation"}
 				</span>
 			</div>
 		</div>
