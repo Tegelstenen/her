@@ -4,7 +4,7 @@ import { useConversation } from "@11labs/react";
 import * as React from "react";
 import { useCallback } from "react";
 
-import EnhancedOrb from "./enhanced-orb";
+import MovingSphere from "./moving-sphere";
 
 async function requestMicrophonePermission() {
 	try {
@@ -67,9 +67,9 @@ export function ConvAI({
 	}, [conversation]);
 	return (
 		<div className="flex items-center justify-center gap-x-4">
-			<div className="flex flex-col gap-y-4 text-center">
+			<div className="flex flex-col items-center text-center">
 				<button
-					className="group mx-12 my-16 h-44 w-44 cursor-pointer transition-shadow duration-300"
+					className="group flex h-[400px] w-[200px] cursor-pointer items-center justify-center transition-shadow duration-300"
 					onClick={() => {
 						if (conversation.status !== "connected") {
 							startConversation();
@@ -88,13 +88,16 @@ export function ConvAI({
 							: "End conversation"
 					}
 				>
-					<EnhancedOrb
-						speaking={
-							conversation.status === "connected" && conversation.isSpeaking
+					<MovingSphere
+						status={
+							conversation.status === "connected"
+								? conversation.isSpeaking
+									? "agentspeaking"
+									: "agentlistening"
+								: conversation.status === "disconnected"
+									? "disconnected"
+									: "connected"
 						}
-						connected={conversation.status === "connected"}
-						color1="#2792DC"
-						color2="#9CE6E6"
 					/>
 				</button>
 				<span className="text-lg font-semibold text-white">
