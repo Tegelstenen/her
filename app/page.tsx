@@ -21,13 +21,13 @@ export default function Home() {
 	}, [isLeaving, router]);
 
 	return (
-		<div className="flex min-h-screen items-center justify-center p-0">
+		<div className="relative flex min-h-screen items-center justify-center p-0">
 			<div className="flex h-full w-full flex-col items-center justify-center">
 				<AnimatePresence mode="wait">
 					{!isLeaving && (
 						<motion.div
 							key="landing"
-							className="relative z-[5] flex h-full flex-col items-center justify-center p-8"
+							className="relative flex h-full flex-col items-center justify-center p-8"
 							initial={{ opacity: 0 }}
 							animate={{ opacity: 1 }}
 							exit={{
@@ -49,17 +49,20 @@ export default function Home() {
 							>
 								<HerLogo className="ml-1 h-[100px] w-auto" />
 							</motion.div>
+							<p className="mb-8 text-center font-medium text-white">
+								Your proactive partner, guiding you to your best self
+							</p>
 							<motion.button
 								className={primaryButtonStyles}
 								onClick={() => setIsLeaving(true)}
-								initial={{ opacity: 0, y: 20 }}
-								animate={{ opacity: 1, y: 0 }}
-								transition={{ delay: 0.5, duration: 0.2 }}
 								whileHover={{ scale: 1.05 }}
 								whileTap={{ scale: 0.98 }}
 							>
-								Become a better you
+								Get started
 							</motion.button>
+							<p className="fixed bottom-4 left-1/2 z-50 -translate-x-1/2 text-center text-xs text-gray-400">
+								Built for the SSE x Microsoft Hackathon
+							</p>
 						</motion.div>
 					)}
 				</AnimatePresence>
