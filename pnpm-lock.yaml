@@ -35,6 +35,9 @@ importers:
       '@radix-ui/react-slot':
         specifier: ^1.2.0
         version: 1.2.0(@types/react@19.1.2)(react@19.1.0)
+      '@sinch/sdk-core':
+        specifier: ^1.2.0
+        version: 1.2.0
       better-auth:
         specifier: ^1.2.7
         version: 1.2.7
@@ -1082,6 +1085,33 @@ packages:
   '@simplewebauthn/server@13.1.1':
     resolution: {integrity: sha512-1hsLpRHfSuMB9ee2aAdh0Htza/X3f4djhYISrggqGe3xopNjOcePiSDkDDoPzDYaaMCrbqGP1H2TYU7bgL9PmA==}
     engines: {node: '>=20.0.0'}
+
+  '@sinch/conversation@1.2.0':
+    resolution: {integrity: sha512-Is6IPySQ036IWc2PcDp1VHM/cs0FIaCH68ZF9T7ehOv0OZT/mNx5bRTqu4E7zt/jjfz0Jc/XU1L+GfYiAhco+g==}
+
+  '@sinch/elastic-sip-trunking@1.2.0':
+    resolution: {integrity: sha512-qn3pSzKj5dYGqVWuSHU1awr786ntW1+u0pAGYlO53Tvhv4bCmBTq+CR5L9FuWV7pSpi2JVaFQJdHtlh3BrkMmA==}
+
+  '@sinch/fax@1.2.0':
+    resolution: {integrity: sha512-lvsCT3E6V/sb/3zciAWGHtDvGXhgDJ/xa10yLyomNrWZO7J5fdnpKWhI564qufd5yINLM/I1BW9V0iOE3PZWFg==}
+
+  '@sinch/numbers@1.2.0':
+    resolution: {integrity: sha512-V93GpUQEejCkYs+UDlNanXeCXjAnOGrFf/7rBQWQZeAkgHCReSX1uDm+jir+F3LxwvKS0ciUnU3goLyCe9cK+g==}
+
+  '@sinch/sdk-client@1.2.0':
+    resolution: {integrity: sha512-0kbprspfnaisNhjP8eME6ft5BTBslTWOBiaEyAqYc4eip29FVPXWclVb43rGU3kPx54ygrnF7xNjAGQRNHNVTw==}
+
+  '@sinch/sdk-core@1.2.0':
+    resolution: {integrity: sha512-n0sWNt61h7fepsMVXmy7m1HrAModf0UC28llfRknPExvI5Rza7eBvE0KK/EV9DF0XEdkN4aI/Rn4ieJhK/sOsg==}
+
+  '@sinch/sms@1.2.0':
+    resolution: {integrity: sha512-UPPI0eAyX6FDaH7uHZftL8MbseAHbuxk39Ndo76I3R7Jj5kAcoj4EDkMHBkUdtNdZdJsBnRMUc5pEgl3qjTHkQ==}
+
+  '@sinch/verification@1.2.0':
+    resolution: {integrity: sha512-pjea8XV6QauAh2X6Kh3pW93jCUu1qthvoi3E4Pr3kTJFM3NsJbnjHmhU00Iz2J7Jqd+qRfdhMvjoYSgrWgbFnQ==}
+
+  '@sinch/voice@1.2.0':
+    resolution: {integrity: sha512-Up+9euLGlWv7se/8tkReF4hgWwvdKdXFZjaYTntyvgWY2dQ8n0cUd+mZvNI4fOuWXfL8PJtM/BwuBllCd8//dg==}
 
   '@standard-schema/utils@0.3.0':
     resolution: {integrity: sha512-e7Mew686owMaPJVNNLs55PUvgz371nKgwsc4vxE49zsODpJEnxgxRo2y/OKrqueavXgZNMDVj3DdHFlaSAeU8g==}
@@ -4166,6 +4196,67 @@ snapshots:
       '@peculiar/asn1-rsa': 2.3.15
       '@peculiar/asn1-schema': 2.3.15
       '@peculiar/asn1-x509': 2.3.15
+
+  '@sinch/conversation@1.2.0':
+    dependencies:
+      '@sinch/sdk-client': 1.2.0
+    transitivePeerDependencies:
+      - encoding
+
+  '@sinch/elastic-sip-trunking@1.2.0':
+    dependencies:
+      '@sinch/sdk-client': 1.2.0
+    transitivePeerDependencies:
+      - encoding
+
+  '@sinch/fax@1.2.0':
+    dependencies:
+      '@sinch/sdk-client': 1.2.0
+    transitivePeerDependencies:
+      - encoding
+
+  '@sinch/numbers@1.2.0':
+    dependencies:
+      '@sinch/sdk-client': 1.2.0
+    transitivePeerDependencies:
+      - encoding
+
+  '@sinch/sdk-client@1.2.0':
+    dependencies:
+      form-data: 4.0.2
+      node-fetch: 2.7.0
+    transitivePeerDependencies:
+      - encoding
+
+  '@sinch/sdk-core@1.2.0':
+    dependencies:
+      '@sinch/conversation': 1.2.0
+      '@sinch/elastic-sip-trunking': 1.2.0
+      '@sinch/fax': 1.2.0
+      '@sinch/numbers': 1.2.0
+      '@sinch/sms': 1.2.0
+      '@sinch/verification': 1.2.0
+      '@sinch/voice': 1.2.0
+    transitivePeerDependencies:
+      - encoding
+
+  '@sinch/sms@1.2.0':
+    dependencies:
+      '@sinch/sdk-client': 1.2.0
+    transitivePeerDependencies:
+      - encoding
+
+  '@sinch/verification@1.2.0':
+    dependencies:
+      '@sinch/sdk-client': 1.2.0
+    transitivePeerDependencies:
+      - encoding
+
+  '@sinch/voice@1.2.0':
+    dependencies:
+      '@sinch/sdk-client': 1.2.0
+    transitivePeerDependencies:
+      - encoding
 
   '@standard-schema/utils@0.3.0': {}
 

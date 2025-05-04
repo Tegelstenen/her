@@ -58,7 +58,6 @@ export default function Home() {
 			setPhoneNumber(values.phone);
 
 			try {
-				// Send OTP to the provided phone number using the phoneNumber plugin
 				await authClient.phoneNumber.sendOtp({
 					phoneNumber: values.phone,
 				});
