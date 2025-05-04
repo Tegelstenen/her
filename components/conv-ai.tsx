@@ -4,9 +4,6 @@ import { useConversation } from "@11labs/react";
 import * as React from "react";
 import { useCallback } from "react";
 
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-
 import EnhancedOrb from "./enhanced-orb";
 
 async function requestMicrophonePermission() {
@@ -68,55 +65,46 @@ export function ConvAI({
 	const stopConversation = useCallback(async () => {
 		await conversation.endSession();
 	}, [conversation]);
-
 	return (
-		<div className={"flex items-center justify-center gap-x-4"}>
-			<Card className={"rounded-3xl"}>
-				<CardContent>
-					<CardHeader>
-						<CardTitle className={"text-center"}>
-							{conversation.status === "connected"
-								? conversation.isSpeaking
-									? `Agent is speaking`
-									: "Agent is listening"
-								: "Disconnected"}
-						</CardTitle>
-					</CardHeader>
-					<div className={"flex flex-col gap-y-4 text-center"}>
-						<div className={"mx-12 my-16 h-44 w-44"}>
-							<EnhancedOrb
-								speaking={
-									conversation.status === "connected" && conversation.isSpeaking
-								}
-								connected={conversation.status === "connected"}
-								color1="#2792DC" // Primary color - you can customize this
-								color2="#9CE6E6" // Secondary color - you can customize this
-							/>
-						</div>
-
-						<Button
-							variant={"outline"}
-							className={"rounded-full"}
-							size={"lg"}
-							disabled={
-								conversation !== null && conversation.status === "connected"
-							}
-							onClick={() => startConversation()}
-						>
-							Start conversation
-						</Button>
-						<Button
-							variant={"outline"}
-							className={"rounded-full"}
-							size={"lg"}
-							disabled={conversation === null}
-							onClick={stopConversation}
-						>
-							End conversation
-						</Button>
-					</div>
-				</CardContent>
-			</Card>
+		<div className="flex items-center justify-center gap-x-4">
+			<div className="flex flex-col gap-y-4 text-center">
+				<button
+					className="group mx-12 my-16 h-44 w-44 cursor-pointer transition-shadow duration-300"
+					onClick={() => {
+						if (conversation.status !== "connected") {
+							startConversation();
+						} else {
+							stopConversation();
+						}
+					}}
+					title={
+						conversation.status !== "connected"
+							? "Start conversation"
+							: "End conversation"
+					}
+					aria-label={
+						conversation.status !== "connected"
+							? "Start conversation"
+							: "End conversation"
+					}
+				>
+					<EnhancedOrb
+						speaking={
+							conversation.status === "connected" && conversation.isSpeaking
+						}
+						connected={conversation.status === "connected"}
+						color1="#2792DC"
+						color2="#9CE6E6"
+					/>
+				</button>
+				<span className="text-lg font-semibold text-white">
+					{conversation.status === "connected"
+						? conversation.isSpeaking
+							? "Agent is speaking"
+							: "Agent is listening"
+						: "Disconnected"}
+				</span>
+			</div>
 		</div>
 	);
 }
