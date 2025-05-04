@@ -12,7 +12,7 @@ export default function AuthPage() {
 	const handleSignUp = () => {
 		setIsLeaving(true);
 		setTimeout(() => {
-			router.push("/onboarding");
+			router.push("/account");
 		}, 200);
 	};
 	return (
