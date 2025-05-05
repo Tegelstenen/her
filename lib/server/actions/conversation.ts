@@ -5,43 +5,105 @@ import { generateText } from "ai";
 import { eq } from "drizzle-orm";
 
 import { db } from "@/lib/server/db/db";
-import { first_conversation } from "@/lib/server/db/schemas/auth-schema";
+import { onboarding } from "@/lib/server/db/schemas/conversation-schema";
 
-export async function setFirstConversationStatus(userId: string) {
+export async function setOnboardingStatus(
+	userId: string,
+	fields: Partial<{
+		hasBeenAdded: boolean;
+		hasChangedName: boolean;
+		hasOnboarded: boolean;
+	}>,
+) {
 	try {
+		if (!userId) {
+			console.error("No userId provided to setOnboardingStatus");
+			return false;
+		}
+
+		console.log(`Setting onboarding status for user ${userId}`);
+
+		// Create base values object
+		const values: {
+			userId: string;
+			updatedAt: Date;
+			hasBeenAdded?: boolean;
+			hasChangedName?: boolean;
+			hasOnboarded?: boolean;
+		} = {
+			userId: userId,
+			updatedAt: new Date(),
+		};
+
+		// Only include fields that were provided
+		if (fields.hasBeenAdded !== undefined)
+			values.hasBeenAdded = fields.hasBeenAdded;
+		if (fields.hasChangedName !== undefined)
+			values.hasChangedName = fields.hasChangedName;
+		if (fields.hasOnboarded !== undefined)
+			values.hasOnboarded = fields.hasOnboarded;
+
+		// Use upsert pattern to either insert or update
 		await db
-			.update(first_conversation)
-			.set({ isFirstConversation: true })
-			.where(eq(first_conversation.userId, userId));
+			.insert(onboarding)
+			.values({
+				...values,
+				createdAt: new Date(),
+			})
+			.onConflictDoUpdate({
+				target: onboarding.userId,
+				set: values,
+			});
+
 		return true;
 	} catch (error) {
-		console.error("Error changing first conversation status:", error);
+		console.error("Error changing onboarding status:", error);
 		return false;
 	}
 }
 
-export async function getFirstConversationStatus(userId: string) {
+export async function getOnboardingStatus(
+	userId: string,
+	field?: "hasBeenAdded" | "hasChangedName" | "hasOnboarded",
+) {
 	try {
+		if (!userId) {
+			console.error("No userId provided to getOnboardingStatus");
+			return field ? false : { hasOnboarded: false };
+		}
+
 		const result = await db
-			.select({ isFirstConversation: first_conversation.isFirstConversation })
-			.from(first_conversation)
-			.where(eq(first_conversation.userId, userId));
-		return result[0]?.isFirstConversation;
-	} catch (error) {
-		console.error("Error fetching:", error);
-	}
-}
+			.select({
+				hasBeenAdded: onboarding.hasBeenAdded,
+				hasChangedName: onboarding.hasChangedName,
+				hasOnboarded: onboarding.hasOnboarded,
+			})
+			.from(onboarding)
+			.where(eq(onboarding.userId, userId));
 
-export async function changeFirstConversationStatus(userId: string) {
-	try {
-		await db
-			.update(first_conversation)
-			.set({ isFirstConversation: false })
-			.where(eq(first_conversation.userId, userId));
-		return true;
+		if (result.length === 0) {
+			// If no record exists, create one
+			console.log(`Creating new onboarding record for user: ${userId}`);
+			try {
+				await db.insert(onboarding).values({
+					userId: userId,
+					hasBeenAdded: false,
+					hasChangedName: false,
+					hasOnboarded: false,
+					createdAt: new Date(),
+					updatedAt: new Date(),
+				});
+			} catch (insertError) {
+				console.error("Error creating onboarding record:", insertError);
+				// If insert fails (e.g., due to race condition), just return default values
+			}
+			return field ? false : { hasOnboarded: false };
+		}
+
+		return field ? result[0][field] : result[0];
 	} catch (error) {
-		console.error("Error changing first conversation status:", error);
-		return false;
+		console.error("Error fetching onboarding status:", error);
+		return field ? false : { hasOnboarded: false };
 	}
 }
 
@@ -53,6 +115,7 @@ export async function addUser(
 	email: string,
 ) {
 	try {
+		console.log(`Attempting to add user to knowledge graph: ${userId}`);
 		const response = await fetch(
 			`https://tegelstenen--her-add-user.modal.run?first_name=${encodeURIComponent(firstName)}&last_name=${encodeURIComponent(lastName)}&user_id=${userId}&email=${encodeURIComponent(email)}`,
 			{ method: "GET" },
@@ -70,9 +133,46 @@ export async function addUser(
 			);
 		}
 
-		return response.json();
+		const result = await response.json();
+		console.log(
+			`Successfully added user to knowledge graph: ${userId}`,
+			result,
+		);
+		return result;
 	} catch (error) {
 		console.error("Error in addUser:", error);
+		throw error;
+	}
+}
+
+// Update an existing user
+export async function updateUser(
+	firstName: string,
+	lastName: string,
+	userId: string,
+	email: string,
+) {
+	try {
+		const response = await fetch(
+			`https://tegelstenen--her-update-user.modal.run?first_name=${encodeURIComponent(firstName)}&last_name=${encodeURIComponent(lastName)}&user_id=${userId}&email=${encodeURIComponent(email)}`,
+			{ method: "GET" },
+		);
+
+		if (!response.ok) {
+			const errorText = await response.text();
+			console.error("Modal endpoint error:", {
+				status: response.status,
+				statusText: response.statusText,
+				error: errorText,
+			});
+			throw new Error(
+				`Failed to update user: ${response.status} ${response.statusText} - ${errorText}`,
+			);
+		}
+
+		return response.json();
+	} catch (error) {
+		console.error("Error in updateUser:", error);
 		throw error;
 	}
 }

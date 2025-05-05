@@ -1,136 +1,209 @@
 "use client";
 
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
+import { useEffect, useState } from "react";
 
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import {
-	Form,
-	FormControl,
-	FormDescription,
-	FormField,
-	FormItem,
-	FormLabel,
-	FormMessage,
-} from "@/components/ui/form";
 import {
 	InputOTP,
 	InputOTPGroup,
 	InputOTPSlot,
 } from "@/components/ui/input-otp";
 import { authClient } from "@/lib/auth-client";
+import { primaryButtonStyles } from "@/lib/button-styles";
+import {
+	addUser,
+	getOnboardingStatus,
+	setOnboardingStatus,
+} from "@/lib/server/actions/conversation";
 
-const FormSchema = z.object({
-	pin: z.string().min(6, {
-		message: "Your one-time password must be 6 characters.",
-	}),
-});
+type InputOTPFormProps = {
+	phoneNumber: string;
+	firstName: string;
+	lastName: string;
+	onVerificationSuccess: () => void;
+};
 
 export function InputOTPForm({
 	phoneNumber,
+	firstName,
+	lastName,
 	onVerificationSuccess,
-}: Readonly<{
-	phoneNumber: string;
-	onVerificationSuccess?: () => void;
-}>) {
+}: InputOTPFormProps) {
+	const [otp, setOtp] = useState("");
 	const [isVerifying, setIsVerifying] = useState(false);
-	const [verificationError, setVerificationError] = useState<string | null>(
-		null,
-	);
+	const [error, setError] = useState<string | null>(null);
+	const [loadingDots, setLoadingDots] = useState("");
 
-	const form = useForm<z.infer<typeof FormSchema>>({
-		resolver: zodResolver(FormSchema),
-		defaultValues: {
-			pin: "",
-		},
-	});
+	useEffect(() => {
+		let interval: NodeJS.Timeout;
+		if (isVerifying) {
+			interval = setInterval(() => {
+				setLoadingDots((dots) => (dots.length >= 3 ? "" : dots + "."));
+			}, 500);
+		} else {
+			setLoadingDots("");
+		}
+		return () => clearInterval(interval);
+	}, [isVerifying]);
 
-	async function onSubmit(data: z.infer<typeof FormSchema>) {
+	const handleVerify = async () => {
+		if (otp.length !== 6) {
+			setError("Please enter a valid 6-digit code");
+			return;
+		}
+
 		setIsVerifying(true);
-		setVerificationError(null);
+		setError(null);
 
 		try {
-			const response = await authClient.phoneNumber.verify({
+			// First verify the OTP with Better Auth
+			console.log("Verifying OTP with names:", firstName, lastName);
+			const verifyResult = await authClient.phoneNumber.verify({
 				phoneNumber: phoneNumber,
-				code: data.pin,
+				code: otp,
 				fetchOptions: {
-					onSuccess(ctx) {
-						console.log("Verification successful:", ctx);
-						if (onVerificationSuccess) {
-							onVerificationSuccess();
-						}
-					},
-					onError(ctx) {
-						console.log("Verification error:", ctx);
-						setVerificationError(
-							ctx.error.message ||
-								"Invalid verification code. Please try again.",
-						);
+					headers: {
+						"x-first-name": firstName,
+						"x-last-name": lastName,
 					},
 				},
 			});
 
-			// Handle success if the onSuccess callback doesn't trigger
-			if (!response.error && onVerificationSuccess) {
-				onVerificationSuccess();
-			} else if (response.error) {
-				setVerificationError(
-					response.error.message || "Verification failed. Please try again.",
-				);
+			if (!verifyResult) {
+				throw new Error("OTP verification failed");
 			}
+
+			// Get the session with the user ID
+			const { data: session } = await authClient.getSession();
+			if (!session?.user?.id) {
+				throw new Error("No session user ID found");
+			}
+
+			try {
+				// Add user to knowledge graph if not done yet
+				const hasBeenAdded = await getOnboardingStatus(
+					session.user.id,
+					"hasBeenAdded",
+				);
+				if (!hasBeenAdded) {
+					console.log(
+						"First sign-up for user, adding to knowledge graph:",
+						session.user.id,
+					);
+					try {
+						const result = await addUser(
+							firstName,
+							lastName,
+							session.user.id,
+							session.user.email,
+						);
+						console.log(
+							"User successfully added to knowledge graph:",
+							session.user.id,
+							result,
+						);
+						await setOnboardingStatus(session.user.id, { hasBeenAdded: true });
+					} catch (error) {
+						console.error("Failed to add user to knowledge graph:", error);
+						throw error;
+					}
+				}
+
+				// Update user profiles to contain real name
+				const hasChangedName = await getOnboardingStatus(
+					session.user.id,
+					"hasChangedName",
+				);
+				if (!hasChangedName) {
+					// Update both name and lastName in a single request
+					await fetch("/api/auth/update-user", {
+						method: "POST",
+						headers: { "Content-Type": "application/json" },
+						body: JSON.stringify({
+							userId: session.user.id,
+							name: firstName,
+							lastName: lastName,
+						}),
+					});
+
+					await setOnboardingStatus(session.user.id, { hasChangedName: true });
+				}
+			} catch (error) {
+				console.error("Error updating user profile or knowledge graph:", error);
+				if (
+					error instanceof Error &&
+					error.message?.includes("Failed to add user")
+				) {
+					throw error;
+				}
+			}
+
+			// Consider verification successful only if we've completed all critical steps
+			onVerificationSuccess();
 		} catch (error) {
-			console.error("Verification error:", error);
-			setVerificationError("An unexpected error occurred. Please try again.");
+			console.error("OTP verification failed:", error);
+			setError("Invalid verification code. Please try again.");
 		} finally {
 			setIsVerifying(false);
 		}
-	}
+	};
 
 	return (
-		<Form {...form}>
-			<form onSubmit={form.handleSubmit(onSubmit)} className="w-2/3 space-y-6">
-				{verificationError && (
-					<Alert
-						variant="destructive"
-						className="mb-4 border border-red-200 bg-red-50 text-red-600"
-					>
-						<AlertDescription>{verificationError}</AlertDescription>
-					</Alert>
-				)}
+		<div className="space-y-6">
+			<div className="space-y-2">
+				<p className="mb-4 text-sm text-white">
+					Enter the 6-digit code sent to {phoneNumber}
+				</p>
+				<InputOTP
+					maxLength={6}
+					value={otp}
+					onChange={setOtp}
+					containerClassName="justify-center"
+				>
+					<InputOTPGroup>
+						{Array.from({ length: 6 }).map((_, i) => (
+							<InputOTPSlot key={i} index={i} />
+						))}
+					</InputOTPGroup>
+				</InputOTP>
+				{error && <p className="mt-2 text-sm text-red-400">{error}</p>}
+			</div>
 
-				<FormField
-					control={form.control}
-					name="pin"
-					render={({ field }) => (
-						<FormItem>
-							<FormLabel className="text-white">One-Time Password</FormLabel>
-							<FormControl>
-								<InputOTP maxLength={6} {...field}>
-									<InputOTPGroup>
-										<InputOTPSlot index={0} />
-										<InputOTPSlot index={1} />
-										<InputOTPSlot index={2} />
-										<InputOTPSlot index={3} />
-										<InputOTPSlot index={4} />
-										<InputOTPSlot index={5} />
-									</InputOTPGroup>
-								</InputOTP>
-							</FormControl>
-							<FormDescription className="text-gray-300">
-								Please enter the one-time password sent to your phone.
-							</FormDescription>
-							<FormMessage />
-						</FormItem>
-					)}
-				/>
+			<Button
+				onClick={handleVerify}
+				disabled={isVerifying || otp.length !== 6}
+				className={`${primaryButtonStyles} min-w-[180px]`}
+			>
+				{isVerifying ? `Verifying${loadingDots}` : "Verify"}
+			</Button>
 
-				<Button type="submit" disabled={isVerifying} className="w-full">
-					{isVerifying ? "Verifying..." : "Submit"}
+			<p className="text-sm text-white">
+				Didn&apos;t receive a code?{" "}
+				<Button
+					variant="link"
+					className="p-0 text-blue-400"
+					onClick={async () => {
+						try {
+							console.log("Resending OTP with names:", firstName, lastName);
+							await authClient.phoneNumber.sendOtp({
+								phoneNumber: phoneNumber,
+								fetchOptions: {
+									headers: {
+										"x-first-name": firstName,
+										"x-last-name": lastName,
+									},
+								},
+							});
+							setError(null);
+						} catch (error) {
+							console.error("Error resending OTP:", error);
+							setError("Failed to resend code. Please try again later.");
+						}
+					}}
+				>
+					Resend
 				</Button>
-			</form>
-		</Form>
+			</p>
+		</div>
 	);
 }

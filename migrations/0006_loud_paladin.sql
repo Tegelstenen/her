@@ -1,0 +1,1 @@
+ALTER TABLE "onboarding" ADD COLUMN "has_signed_up" boolean DEFAULT false NOT NULL;

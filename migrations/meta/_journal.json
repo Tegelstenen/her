@@ -29,6 +29,34 @@
       "when": 1746394550588,
       "tag": "0003_reflective_jetstream",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1746440906244,
+      "tag": "0004_fair_white_tiger",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1746442340799,
+      "tag": "0005_past_monster_badoon",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1746448712154,
+      "tag": "0006_loud_paladin",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1746450417038,
+      "tag": "0007_rapid_nicolaos",
+      "breakpoints": true
     }
   ]
 }

@@ -6,17 +6,42 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { AuthForm } from "@/components/auth-form";
+import { authClient } from "@/lib/auth-client";
 
 export default function AuthPage() {
 	const router = useRouter();
 	const [isLeaving, setIsLeaving] = useState(false);
 
-	const handleSignUp = (name: string, phone: string) => {
+	const handleSignUp = async () => {
 		setIsLeaving(true);
-		console.log(name, phone);
-		setTimeout(() => {
+
+		// Get the current session
+		const { data: currentSession } = await authClient.getSession();
+
+		if (currentSession?.user) {
+			// If we already have a session, redirect immediately
 			router.push("/account");
-		}, 200);
+			return;
+		}
+
+		// If no session yet, wait for it with a timeout
+		const maxAttempts = 50; // 5 seconds total
+		let attempts = 0;
+		let sessionCheckInterval: NodeJS.Timeout | null = null;
+
+		sessionCheckInterval = setInterval(async () => {
+			attempts++;
+			const { data: session } = await authClient.getSession();
+
+			if (session?.user) {
+				if (sessionCheckInterval) clearInterval(sessionCheckInterval);
+				router.push("/account");
+			} else if (attempts >= maxAttempts) {
+				if (sessionCheckInterval) clearInterval(sessionCheckInterval);
+				console.error("Session not found after multiple attempts");
+				router.push("/auth");
+			}
+		}, 100);
 	};
 
 	return (
