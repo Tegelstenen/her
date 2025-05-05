@@ -1,0 +1,280 @@
+"use client";
+
+import { zodResolver } from "@hookform/resolvers/zod";
+import { motion } from "framer-motion";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { isValidPhoneNumber } from "react-phone-number-input";
+import { z } from "zod";
+
+import { InputOTPForm } from "@/components/otp-input";
+import { PhoneInput } from "@/components/phone-input";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Form } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { authClient } from "@/lib/auth-client";
+import { primaryButtonStyles } from "@/lib/button-styles";
+
+// Form validation schema
+const FormSchema = z.object({
+	name: z.string().min(2, { message: "Name must be at least 2 characters" }),
+	phone: z
+		.string()
+		.refine(isValidPhoneNumber, { message: "Invalid phone number" }),
+	terms: z.boolean().refine((val) => val === true, {
+		message: "You must accept the terms and conditions",
+	}),
+});
+
+export function AuthForm({
+	onSignUp,
+}: {
+	onSignUp?: (name: string, phone: string) => void;
+}) {
+	const [view, setView] = useState<"form" | "otp">("form");
+	const [phoneNumber, setPhoneNumber] = useState<string>("");
+	const [name, setName] = useState<string>("");
+	const [isTransitioning, setIsTransitioning] = useState(false);
+
+	// Setup form with validation
+	const form = useForm<z.infer<typeof FormSchema>>({
+		resolver: zodResolver(FormSchema),
+		defaultValues: {
+			name: "",
+			phone: "",
+			terms: false,
+		},
+	});
+
+	const handleSubmit = form.handleSubmit(
+		async (values: z.infer<typeof FormSchema>) => {
+			setIsTransitioning(true);
+			setName(values.name);
+			setPhoneNumber(values.phone);
+
+			try {
+				await authClient.phoneNumber.sendOtp({
+					phoneNumber: values.phone,
+				});
+
+				setTimeout(() => {
+					setView("otp");
+					setIsTransitioning(false);
+				}, 300);
+			} catch (error) {
+				console.error("Error sending OTP:", error);
+				setIsTransitioning(false);
+			}
+		},
+	);
+
+	// Handle successful OTP verification
+	const handleVerificationSuccess = async () => {
+		if (onSignUp) {
+			onSignUp(name, phoneNumber);
+		}
+	};
+
+	if (view === "otp") {
+		return (
+			<motion.div
+				key="otp-content"
+				className="relative z-[5] flex w-1/2 flex-col justify-center p-12"
+				initial={{ x: -50, opacity: 0 }}
+				animate={{ x: 0, opacity: 1 }}
+				exit={{
+					x: -50,
+					opacity: 0,
+					transition: { duration: 0.3 },
+				}}
+				transition={{ duration: 0.5, delay: 0.3 }}
+			>
+				<div className="mb-10">
+					<motion.h1
+						className="mb-3 text-4xl font-semibold text-white"
+						initial={{ y: -20, opacity: 0 }}
+						animate={{ y: 0, opacity: 1 }}
+						transition={{ duration: 0.5, delay: 0.4 }}
+					>
+						Verify your phone
+					</motion.h1>
+				</div>
+
+				<motion.div
+					initial={{ opacity: 0 }}
+					animate={{ opacity: 1 }}
+					transition={{ duration: 0.5, delay: 0.6 }}
+				>
+					<InputOTPForm
+						phoneNumber={phoneNumber}
+						onVerificationSuccess={handleVerificationSuccess}
+					/>
+
+					<div className="mt-6">
+						<motion.div
+							initial={{ y: 20, opacity: 0 }}
+							animate={{ y: 0, opacity: 1 }}
+							transition={{ duration: 0.3, delay: 0.9 }}
+						>
+							<Button
+								type="button"
+								variant="link"
+								className="text-sm text-blue-400 hover:underline"
+								onClick={() => setView("form")}
+							>
+								Back to registration
+							</Button>
+						</motion.div>
+					</div>
+				</motion.div>
+			</motion.div>
+		);
+	}
+
+	return (
+		<motion.div
+			key="form-content"
+			className="relative z-[5] flex w-1/2 flex-col justify-center p-12"
+			initial={{ x: -50, opacity: 0 }}
+			animate={{ x: 0, opacity: 1 }}
+			exit={{
+				x: -50,
+				opacity: 0,
+				transition: { duration: 0.3 },
+			}}
+			transition={{ duration: 0.5, delay: 0.3 }}
+		>
+			<div className="mb-10">
+				<motion.h1
+					className="mb-3 text-4xl font-semibold text-white"
+					initial={{ y: -20, opacity: 0 }}
+					animate={{ y: 0, opacity: 1 }}
+					transition={{ duration: 0.5, delay: 0.4 }}
+				>
+					Ready to start your success story?
+				</motion.h1>
+				<motion.p
+					className="mb-8 text-white"
+					initial={{ y: -20, opacity: 0 }}
+					animate={{ y: 0, opacity: 1 }}
+					transition={{ duration: 0.5, delay: 0.5 }}
+				>
+					Signup today and start your journey to becoming a better you!
+				</motion.p>
+			</div>
+
+			<motion.div
+				className="space-y-6"
+				initial={{ opacity: 0 }}
+				animate={{ opacity: 1 }}
+				transition={{ duration: 0.5, delay: 0.6 }}
+			>
+				<Form {...form}>
+					<form onSubmit={handleSubmit} className="space-y-6">
+						<motion.div
+							className="space-y-2"
+							initial={{ y: 20, opacity: 0 }}
+							animate={{ y: 0, opacity: 1 }}
+							transition={{ duration: 0.3, delay: 0.7 }}
+						>
+							<Label
+								className="block text-sm font-medium text-white"
+								htmlFor="name"
+							>
+								Full name
+							</Label>
+							<Input
+								id="name"
+								type="text"
+								className="w-full border-b border-gray-300 bg-transparent p-2 text-white placeholder:text-gray-400 focus:border-blue-500 focus:outline-none"
+								placeholder="Jane Doe"
+								{...form.register("name")}
+								required
+							/>
+							{form.formState.errors.name && (
+								<p className="mt-1 text-sm text-red-400">
+									{form.formState.errors.name.message}
+								</p>
+							)}
+						</motion.div>
+
+						<motion.div
+							className="space-y-2"
+							initial={{ y: 20, opacity: 0 }}
+							animate={{ y: 0, opacity: 1 }}
+							transition={{ duration: 0.3, delay: 0.8 }}
+						>
+							<Label
+								className="block text-sm font-medium text-white"
+								htmlFor="phone"
+							>
+								Phone number
+							</Label>
+							<PhoneInput
+								id="phone"
+								value={form.watch("phone")}
+								international
+								defaultCountry="SE"
+								onChange={(value) =>
+									form.setValue("phone", value || "", { shouldValidate: true })
+								}
+								required
+							/>
+							{form.formState.errors.phone && (
+								<p className="mt-1 text-sm text-red-400">
+									{form.formState.errors.phone.message}
+								</p>
+							)}
+						</motion.div>
+
+						<motion.div
+							className="mt-8 flex items-center"
+							initial={{ y: 20, opacity: 0 }}
+							animate={{ y: 0, opacity: 1 }}
+							transition={{ duration: 0.3, delay: 0.9 }}
+						>
+							<Checkbox
+								id="terms"
+								className="h-4 w-4 rounded border-gray-300 text-blue-500 focus:ring-blue-500"
+								checked={form.watch("terms")}
+								onCheckedChange={(checked) =>
+									form.setValue("terms", checked === true, {
+										shouldValidate: true,
+									})
+								}
+								required
+							/>
+							<Label htmlFor="terms" className="ml-2 block text-sm text-white">
+								I agree to the{" "}
+								<span className="text-blue-400">Terms & Conditions</span>
+							</Label>
+							{form.formState.errors.terms && (
+								<p className="ml-2 text-sm text-red-400">
+									{form.formState.errors.terms.message}
+								</p>
+							)}
+						</motion.div>
+
+						<motion.div
+							initial={{ y: 20, opacity: 0 }}
+							animate={{ y: 0, opacity: 1 }}
+							transition={{ duration: 0.3, delay: 1 }}
+							whileHover={{ scale: 1.05 }}
+							whileTap={{ scale: 0.98 }}
+						>
+							<Button
+								type="submit"
+								className={primaryButtonStyles}
+								disabled={isTransitioning}
+							>
+								Sign up
+							</Button>
+						</motion.div>
+					</form>
+				</Form>
+			</motion.div>
+		</motion.div>
+	);
+}
