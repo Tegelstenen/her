@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { authClient } from "@/lib/auth-client";
 import { primaryButtonStyles } from "@/lib/button-styles";
+import { setFirstConversationStatus } from "@/lib/server/actions/conversation";
 
 // Form validation schema
 const FormSchema = z.object({
@@ -40,7 +41,8 @@ export default function Home() {
 	const [phoneNumber, setPhoneNumber] = useState<string>("");
 	const [name, setName] = useState<string>("");
 	const [isTransitioning, setIsTransitioning] = useState(false);
-
+	const [userID, setUserID] = useState<string | undefined>(undefined);
+	const [email, setEmail] = useState<string>("");
 	// Setup form with validation
 	const form = useForm<z.infer<typeof FormSchema>>({
 		resolver: zodResolver(FormSchema),
@@ -75,8 +77,20 @@ export default function Home() {
 	);
 
 	// Handle successful OTP verification
-	const handleVerificationSuccess = () => {
+	const handleVerificationSuccess = async () => {
 		setIsTransitioning(true);
+		try {
+			const { data: session } = await authClient.getSession();
+			setUserID(session?.user.id); // Store session data in state
+			setEmail(session?.user.email ?? "");
+			// Set first conversation flag for new users
+			if (session?.user.id) {
+				await setFirstConversationStatus(session?.user.id);
+			}
+		} catch (error) {
+			console.error("Error getting session:", error);
+		}
+
 		setTimeout(() => {
 			setView("conversation");
 			setIsTransitioning(false);
@@ -427,8 +441,10 @@ export default function Home() {
 								}}
 							>
 								<ConvAI
-									user_name={name}
-									goals={"to become a humanitary world leader"}
+									first_name={name.split(" ")[0]}
+									last_name={name.split(" ").slice(1).join(" ")}
+									user_id={userID}
+									email={email}
 								/>
 							</motion.div>
 						</motion.div>
