@@ -1,4 +1,4 @@
-import { boolean, jsonb, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { boolean, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 
 export const user = pgTable("user", {
 	id: text("id").primaryKey(),
@@ -10,6 +10,7 @@ export const user = pgTable("user", {
 	updatedAt: timestamp("updated_at").notNull(),
 	phoneNumber: text("phone_number").unique(),
 	phoneNumberVerified: boolean("phone_number_verified"),
+	lastName: text("last_name").notNull(),
 });
 
 export const session = pgTable("session", {
@@ -50,24 +51,4 @@ export const verification = pgTable("verification", {
 	expiresAt: timestamp("expires_at").notNull(),
 	createdAt: timestamp("created_at"),
 	updatedAt: timestamp("updated_at"),
-});
-
-export const conversations = pgTable("conversations", {
-	id: text("id").primaryKey().notNull(),
-	userId: text("user_id")
-		.notNull()
-		.references(() => user.id),
-	createdAt: timestamp("created_at").defaultNow().notNull(),
-	summary: text("summary"),
-	metadata: jsonb("metadata"),
-});
-
-export const first_conversation = pgTable("first_conversation", {
-	userId: text("user_id")
-		.primaryKey()
-		.references(() => user.id),
-	isFirstConversation: boolean("is_first_conversation")
-		.default(false)
-		.notNull(),
-	updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

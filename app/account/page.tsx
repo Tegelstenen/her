@@ -1,11 +1,12 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import React, { useEffect,useState } from "react";
+import React, { useEffect, useState } from "react";
 
 import { ConvAI } from "@/components/conv-ai";
 import GoalBox from "@/components/goal-box";
 import QuestionBox from "@/components/question-box";
+import { authClient } from "@/lib/auth-client";
 
 const goalBoxData = [
 	{
@@ -24,7 +25,16 @@ const goalBoxData = [
 	},
 ];
 
+async function getSession() {
+	const { data: session } = await authClient.getSession();
+	return session;
+}
+
 export default function AccountPage() {
+	const [session, setSession] = useState<Session | null>(null);
+	useEffect(() => {
+		getSession().then(setSession);
+	}, []);
 	const [flowState, setFlowState] = useState<"onboarding" | "dashboard">(
 		"onboarding",
 	);
@@ -70,7 +80,17 @@ export default function AccountPage() {
 		},
 	];
 
-	const handleSubmit = () => {
+	const handleSubmit = async () => {
+		if (session?.user.id) {
+			try {
+				console.log("Completing onboarding for user:", session.user.id);
+			} catch (error) {
+				console.error("Error completing onboarding:", error);
+			}
+		} else {
+			console.error("No valid session available for onboarding completion");
+		}
+
 		setStep(0);
 		setTimeout(() => {
 			setFlowState("dashboard");
@@ -135,7 +155,7 @@ export default function AccountPage() {
 						}
 					}}
 				>
-					<ConvAI user_name={"temp"} goals={"temp"} />
+					<ConvAI first_name={session?.user.name} user_id={session?.user.id} />
 				</motion.div>
 
 				{flowState === "onboarding" && (

@@ -19,7 +19,12 @@ import { primaryButtonStyles } from "@/lib/button-styles";
 
 // Form validation schema
 const FormSchema = z.object({
-	name: z.string().min(2, { message: "Name must be at least 2 characters" }),
+	firstName: z
+		.string()
+		.min(2, { message: "First name must be at least 2 characters" }),
+	lastName: z
+		.string()
+		.min(2, { message: "Last name must be at least 2 characters" }),
 	phone: z
 		.string()
 		.refine(isValidPhoneNumber, { message: "Invalid phone number" }),
@@ -31,18 +36,20 @@ const FormSchema = z.object({
 export function AuthForm({
 	onSignUp,
 }: {
-	onSignUp?: (name: string, phone: string) => void;
+	onSignUp?: (first_name: string, last_name: string, phone: string) => void;
 }) {
 	const [view, setView] = useState<"form" | "otp">("form");
 	const [phoneNumber, setPhoneNumber] = useState<string>("");
-	const [name, setName] = useState<string>("");
+	const [firstName, setFirstName] = useState<string>("");
+	const [lastName, setLastName] = useState<string>("");
 	const [isTransitioning, setIsTransitioning] = useState(false);
 
 	// Setup form with validation
 	const form = useForm<z.infer<typeof FormSchema>>({
 		resolver: zodResolver(FormSchema),
 		defaultValues: {
-			name: "",
+			firstName: "",
+			lastName: "",
 			phone: "",
 			terms: false,
 		},
@@ -51,12 +58,24 @@ export function AuthForm({
 	const handleSubmit = form.handleSubmit(
 		async (values: z.infer<typeof FormSchema>) => {
 			setIsTransitioning(true);
-			setName(values.name);
+			setFirstName(values.firstName);
+			setLastName(values.lastName);
 			setPhoneNumber(values.phone);
 
 			try {
+				console.log(
+					"Sending OTP with first/last name:",
+					values.firstName,
+					values.lastName,
+				);
 				await authClient.phoneNumber.sendOtp({
 					phoneNumber: values.phone,
+					fetchOptions: {
+						headers: {
+							"x-first-name": values.firstName,
+							"x-last-name": values.lastName,
+						},
+					},
 				});
 
 				setTimeout(() => {
@@ -73,7 +92,7 @@ export function AuthForm({
 	// Handle successful OTP verification
 	const handleVerificationSuccess = async () => {
 		if (onSignUp) {
-			onSignUp(name, phoneNumber);
+			onSignUp(firstName, lastName, phoneNumber);
 		}
 	};
 
@@ -109,6 +128,8 @@ export function AuthForm({
 				>
 					<InputOTPForm
 						phoneNumber={phoneNumber}
+						firstName={firstName} // Pass firstName
+						lastName={lastName} // Pass lastName
 						onVerificationSuccess={handleVerificationSuccess}
 					/>
 
@@ -179,25 +200,50 @@ export function AuthForm({
 							animate={{ y: 0, opacity: 1 }}
 							transition={{ duration: 0.3, delay: 0.7 }}
 						>
-							<Label
-								className="block text-sm font-medium text-white"
-								htmlFor="name"
-							>
-								Full name
-							</Label>
-							<Input
-								id="name"
-								type="text"
-								className="w-full border-b border-gray-300 bg-transparent p-2 text-white placeholder:text-gray-400 focus:border-blue-500 focus:outline-none"
-								placeholder="Jane Doe"
-								{...form.register("name")}
-								required
-							/>
-							{form.formState.errors.name && (
-								<p className="mt-1 text-sm text-red-400">
-									{form.formState.errors.name.message}
-								</p>
-							)}
+							<div className="flex gap-4">
+								<div className="flex-1">
+									<Label
+										className="block text-sm font-medium text-white"
+										htmlFor="firstName"
+									>
+										First name
+									</Label>
+									<Input
+										id="firstName"
+										type="text"
+										className="w-full border-b border-gray-300 bg-transparent p-2 text-white placeholder:text-gray-400 focus:border-blue-500 focus:outline-none"
+										placeholder="Jane"
+										{...form.register("firstName")}
+										required
+									/>
+									{form.formState.errors.firstName && (
+										<p className="mt-1 text-sm text-red-400">
+											{form.formState.errors.firstName.message}
+										</p>
+									)}
+								</div>
+								<div className="flex-1">
+									<Label
+										className="block text-sm font-medium text-white"
+										htmlFor="lastName"
+									>
+										Last name
+									</Label>
+									<Input
+										id="lastName"
+										type="text"
+										className="w-full border-b border-gray-300 bg-transparent p-2 text-white placeholder:text-gray-400 focus:border-blue-500 focus:outline-none"
+										placeholder="Doe"
+										{...form.register("lastName")}
+										required
+									/>
+									{form.formState.errors.lastName && (
+										<p className="mt-1 text-sm text-red-400">
+											{form.formState.errors.lastName.message}
+										</p>
+									)}
+								</div>
+							</div>
 						</motion.div>
 
 						<motion.div

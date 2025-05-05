@@ -5,32 +5,37 @@ import { phoneNumber } from "better-auth/plugins";
 import { db } from "@/lib/server/db/db";
 import * as schema from "@/lib/server/db/schemas/auth-schema";
 
-// Function to send OTP using our API route
-const sendOtpUsingApi = async (phoneNumber: string, code: string) => {
-	try {
-		// In Node.js environment, we need an absolute URL
-		const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-		const response = await fetch(`${baseUrl}/api/otp`, {
-			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
-			},
-			body: JSON.stringify({ phoneNumber, code }),
-		});
+// // Function to send OTP using our API route
+// const sendOtpUsingApi = async (phoneNumber: string, code: string) => {
+// 	try {
+// 		// In Node.js environment, we need an absolute URL
+// 		const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+// 		const response = await fetch(`${baseUrl}/api/otp`, {
+// 			method: "POST",
+// 			headers: {
+// 				"Content-Type": "application/json",
+// 			},
+// 			body: JSON.stringify({ phoneNumber, code }),
+// 		});
 
-		const result = await response.json();
-		return result;
-	} catch (error) {
-		console.error("Error sending OTP:", error);
-		return { success: false, error };
-	}
-};
+// 		const result = await response.json();
+// 		return result;
+// 	} catch (error) {
+// 		console.error("Error sending OTP:", error);
+// 		return { success: false, error };
+// 	}
+// };
 
 export const auth = betterAuth({
 	database: drizzleAdapter(db, {
 		provider: "pg",
 		schema: schema,
 	}),
+	user: {
+		additionalFields: {
+			lastName: { type: "string", required: true, defaultValue: "User" },
+		},
+	},
 	plugins: [
 		phoneNumber({
 			// OTP configuration options
@@ -44,13 +49,14 @@ export const auth = betterAuth({
 				console.log(`-----------------------------------`);
 
 				// Send the OTP code using our API endpoint
-				await sendOtpUsingApi(phoneNumber, code);
+				// await sendOtpUsingApi(phoneNumber, code);
 
 				// Using request parameter to satisfy linter
 				if (request && request.headers) {
 					console.log(
 						"Request received from:",
-						request.headers.get?.("user-agent") || "unknown",
+						request.headers.get?.("x-first-name") || "unknown",
+						request.headers.get?.("x-last-name") || "unknown",
 					);
 				}
 
