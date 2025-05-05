@@ -1,0 +1,1 @@
+ALTER TABLE "first_conversation" RENAME COLUMN "has_first_conversation" TO "is_first_conversation";
