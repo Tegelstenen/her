@@ -12,7 +12,6 @@ import {
 	CommandItem,
 	CommandList,
 } from "@/components/ui/command";
-import { Input } from "@/components/ui/input";
 import {
 	Popover,
 	PopoverContent,
@@ -56,9 +55,9 @@ const InputComponent = React.forwardRef<
 	HTMLInputElement,
 	React.ComponentProps<"input">
 >(({ className, ...props }, ref) => (
-	<Input
+	<input
 		className={cn(
-			"w-full rounded-md border-b border-gray-300 bg-transparent p-2 pl-20 text-white placeholder:text-gray-400 focus:border-blue-500 focus:outline-none",
+			"w-full rounded-none border-0 border-b border-gray-300 bg-transparent p-2 pl-18 text-white shadow-none placeholder:text-gray-400 focus:border-blue-500 focus:outline-none",
 			className,
 		)}
 		{...props}
@@ -87,9 +86,9 @@ const CountrySelect = ({
 			<PopoverTrigger asChild>
 				<Button
 					type="button"
-					variant="ghost"
+					variant="secondary"
 					className={cn(
-						"absolute top-1/2 left-0 z-10 flex -translate-y-1/2 items-center gap-2 bg-transparent p-1 text-white",
+						"absolute top-1/2 left-0 z-10 flex -translate-y-1/2 items-center gap-1 bg-transparent p-1 text-white transition-colors hover:bg-gray-800",
 						disabled ? "opacity-50" : "",
 					)}
 					disabled={disabled}
@@ -106,24 +105,33 @@ const CountrySelect = ({
 					/>
 				</Button>
 			</PopoverTrigger>
-			<PopoverContent className="w-[300px] p-0">
-				<Command>
-					<CommandInput placeholder="Search country..." />
-					<CommandList>
-						<ScrollArea className="h-72">
-							<CommandEmpty>No country found.</CommandEmpty>
+			<PopoverContent
+				align="start"
+				className="w-[300px] border border-gray-400 bg-black p-0 text-white"
+			>
+				<Command className="bg-black text-white">
+					<CommandInput
+						placeholder="Search country..."
+						className="h-9 rounded-none border-b bg-black text-white"
+					/>
+					<CommandList className="bg-black text-white">
+						<CommandEmpty className="bg-black py-3 text-center text-sm text-gray-400">
+							No country found.
+						</CommandEmpty>
+						<ScrollArea className="bg-black text-white">
 							<CommandGroup>
-								{countryList.map(({ value, label }) =>
-									value ? (
+								{countryList.map((option) => {
+									if (!option.value) return null;
+									return (
 										<CountrySelectOption
-											key={value}
-											country={value}
-											countryName={label}
+											key={option.value}
+											label={option.label}
+											value={option.value}
 											selectedCountry={selectedCountry}
 											onChange={onChange}
 										/>
-									) : null,
-								)}
+									);
+								})}
 							</CommandGroup>
 						</ScrollArea>
 					</CommandList>
@@ -133,36 +141,39 @@ const CountrySelect = ({
 	);
 };
 
-interface CountrySelectOptionProps extends RPNInput.FlagProps {
+type CountrySelectOptionProps = {
+	label: string;
+	value: RPNInput.Country;
 	selectedCountry: RPNInput.Country;
 	onChange: (country: RPNInput.Country) => void;
-}
+};
 
 const CountrySelectOption = ({
-	country,
-	countryName,
+	label,
+	value,
 	selectedCountry,
 	onChange,
 }: CountrySelectOptionProps) => {
 	return (
-		<CommandItem className="gap-2" onSelect={() => onChange(country)}>
-			<FlagComponent country={country} countryName={countryName} />
-			<span className="flex-1 text-sm">{countryName}</span>
-			<span className="text-foreground/50 text-sm">{`+${RPNInput.getCountryCallingCode(country)}`}</span>
-			<CheckIcon
-				className={`ml-auto size-4 ${country === selectedCountry ? "opacity-100" : "opacity-0"}`}
-			/>
+		<CommandItem
+			className="!hover:bg-gray-800 !data-[selected=true]:bg-gray-700 !data-[selected=true]:text-white cursor-pointer !bg-black bg-black !text-white text-white hover:bg-gray-800 data-[selected=true]:bg-gray-700 data-[selected=true]:text-white"
+			onSelect={() => onChange(value)}
+		>
+			<FlagComponent country={value} countryName={label} />
+			<span className="ml-2 flex-1 truncate">{label}</span>
+			{value === selectedCountry && (
+				<CheckIcon className="ml-auto h-4 w-4 opacity-100" />
+			)}
 		</CommandItem>
 	);
 };
 
 const FlagComponent = ({ country, countryName }: RPNInput.FlagProps) => {
 	const Flag = flags[country];
-
 	return (
-		<span className="flex h-5 w-6 items-center justify-center overflow-hidden">
+		<div className="mr-2 flex h-5 w-6 items-center justify-center overflow-hidden rounded-sm border border-gray-500">
 			{Flag && <Flag title={countryName} />}
-		</span>
+		</div>
 	);
 };
 

@@ -13,7 +13,7 @@ export const BackgroundDust = () => {
 			muted
 			loop
 			controls={false}
-			className="pointer-events-none absolute z-[-1] h-full w-full object-cover blur-3xl"
+			className="pointer-events-none absolute z-[-1] h-full w-full object-cover blur-xl"
 		/>
 	);
 };

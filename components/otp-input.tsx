@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
+import { useCallback, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -8,8 +9,8 @@ import {
 	InputOTPGroup,
 	InputOTPSlot,
 } from "@/components/ui/input-otp";
+import { Spinner } from "@/components/ui/spinner";
 import { authClient } from "@/lib/auth-client";
-import { primaryButtonStyles } from "@/lib/button-styles";
 import {
 	addUser,
 	getOnboardingStatus,
@@ -21,6 +22,7 @@ type InputOTPFormProps = {
 	firstName: string;
 	lastName: string;
 	onVerificationSuccess: () => void;
+	onBackToRegistration?: () => void;
 };
 
 export function InputOTPForm({
@@ -28,30 +30,17 @@ export function InputOTPForm({
 	firstName,
 	lastName,
 	onVerificationSuccess,
+	onBackToRegistration,
 }: InputOTPFormProps) {
 	const [otp, setOtp] = useState("");
 	const [isVerifying, setIsVerifying] = useState(false);
 	const [error, setError] = useState<string | null>(null);
-	const [loadingDots, setLoadingDots] = useState("");
+	const [lastAttemptedOtp, setLastAttemptedOtp] = useState<string>("-");
 
-	useEffect(() => {
-		let interval: NodeJS.Timeout;
-		if (isVerifying) {
-			interval = setInterval(() => {
-				setLoadingDots((dots) => (dots.length >= 3 ? "" : dots + "."));
-			}, 500);
-		} else {
-			setLoadingDots("");
-		}
-		return () => clearInterval(interval);
-	}, [isVerifying]);
+	const handleVerify = useCallback(async () => {
+		if (isVerifying || otp.length !== 6) return;
 
-	const handleVerify = async () => {
-		if (otp.length !== 6) {
-			setError("Please enter a valid 6-digit code");
-			return;
-		}
-
+		setLastAttemptedOtp(otp);
 		setIsVerifying(true);
 		setError(null);
 
@@ -142,68 +131,106 @@ export function InputOTPForm({
 			onVerificationSuccess();
 		} catch (error) {
 			console.error("OTP verification failed:", error);
-			setError("Invalid verification code. Please try again.");
+			setError("Verification failed.");
 		} finally {
 			setIsVerifying(false);
+		}
+	}, [
+		otp,
+		isVerifying,
+		authClient,
+		phoneNumber,
+		onVerificationSuccess,
+		firstName,
+		lastName,
+	]);
+
+	useEffect(() => {
+		if (otp.length === 6 && !isVerifying && otp !== lastAttemptedOtp) {
+			const timer = setTimeout(() => {
+				handleVerify();
+			}, 200);
+			return () => clearTimeout(timer);
+		}
+	}, [otp, isVerifying, handleVerify, lastAttemptedOtp]);
+
+	const handleResend = async () => {
+		try {
+			console.log("Resending OTP with names:", firstName, lastName);
+			await authClient.phoneNumber.sendOtp({
+				phoneNumber: phoneNumber,
+				fetchOptions: {
+					headers: {
+						"x-first-name": firstName,
+						"x-last-name": lastName,
+					},
+				},
+			});
+			setError(null);
+		} catch (error) {
+			console.error("Error resending OTP:", error);
+			setError("Failed to resend code. Please try again later.");
 		}
 	};
 
 	return (
 		<div className="space-y-6">
 			<div className="space-y-2">
-				<p className="mb-4 text-sm text-white">
-					Enter the 6-digit code sent to {phoneNumber}
-				</p>
-				<InputOTP
-					maxLength={6}
-					value={otp}
-					onChange={setOtp}
-					containerClassName="justify-center"
+				<motion.p
+					className="text text-white"
+					initial={{ y: 20, opacity: 0 }}
+					animate={{ y: 0, opacity: 1 }}
+					transition={{ duration: 0.3, delay: 0.4 }}
 				>
-					<InputOTPGroup>
-						{Array.from({ length: 6 }).map((_, i) => (
-							<InputOTPSlot key={i} index={i} />
-						))}
-					</InputOTPGroup>
-				</InputOTP>
+					Enter the verification code sent to {phoneNumber}
+				</motion.p>
+				<motion.div
+					initial={{ y: 20, opacity: 0 }}
+					animate={{ y: 0, opacity: 1 }}
+					transition={{ duration: 0.3, delay: 0.5 }}
+				>
+					<div className="flex items-center">
+						<InputOTP maxLength={6} value={otp} onChange={setOtp}>
+							<InputOTPGroup>
+								{Array.from({ length: 6 }).map((_, i) => (
+									<InputOTPSlot key={i} index={i} />
+								))}
+							</InputOTPGroup>
+						</InputOTP>
+						{isVerifying && (
+							<div className="ml-2">
+								<Spinner className="h-5 w-5 text-white" />
+							</div>
+						)}
+					</div>
+				</motion.div>
 				{error && <p className="mt-2 text-sm text-red-400">{error}</p>}
 			</div>
 
-			<Button
-				onClick={handleVerify}
-				disabled={isVerifying || otp.length !== 6}
-				className={`${primaryButtonStyles} min-w-[180px]`}
+			<motion.div
+				initial={{ y: 20, opacity: 0 }}
+				animate={{ y: 0, opacity: 1 }}
+				transition={{ duration: 0.3, delay: 0.7 }}
 			>
-				{isVerifying ? `Verifying${loadingDots}` : "Verify"}
-			</Button>
-
-			<p className="text-sm text-white">
-				Didn&apos;t receive a code?{" "}
-				<Button
-					variant="link"
-					className="p-0 text-blue-400"
-					onClick={async () => {
-						try {
-							console.log("Resending OTP with names:", firstName, lastName);
-							await authClient.phoneNumber.sendOtp({
-								phoneNumber: phoneNumber,
-								fetchOptions: {
-									headers: {
-										"x-first-name": firstName,
-										"x-last-name": lastName,
-									},
-								},
-							});
-							setError(null);
-						} catch (error) {
-							console.error("Error resending OTP:", error);
-							setError("Failed to resend code. Please try again later.");
-						}
-					}}
-				>
-					Resend
-				</Button>
-			</p>
+				<div className="mt-2">
+					<Button
+						type="button"
+						variant="link"
+						className="p-0 text-sm text-blue-400 hover:underline"
+						onClick={handleResend}
+					>
+						Resend Code
+					</Button>
+					<Button
+						type="button"
+						variant="link"
+						className="text-sm text-blue-400 hover:underline"
+						onClick={onBackToRegistration}
+					>
+						Back to registration
+					</Button>
+				</div>
+			</motion.div>
 		</div>
 	);
 }

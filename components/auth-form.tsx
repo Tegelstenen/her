@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { isValidPhoneNumber } from "react-phone-number-input";
@@ -12,7 +12,6 @@ import { PhoneInput } from "@/components/phone-input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Form } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { authClient } from "@/lib/auth-client";
 import { primaryButtonStyles } from "@/lib/button-styles";
@@ -21,10 +20,16 @@ import { primaryButtonStyles } from "@/lib/button-styles";
 const FormSchema = z.object({
 	firstName: z
 		.string()
-		.min(2, { message: "First name must be at least 2 characters" }),
+		.min(2, { message: "First name must be at least 2 characters" })
+		.refine((val) => !/\d/.test(val), {
+			message: "First name should not contain numbers",
+		}),
 	lastName: z
 		.string()
-		.min(2, { message: "Last name must be at least 2 characters" }),
+		.min(2, { message: "Last name must be at least 2 characters" })
+		.refine((val) => !/\d/.test(val), {
+			message: "Last name should not contain numbers",
+		}),
 	phone: z
 		.string()
 		.refine(isValidPhoneNumber, { message: "Invalid phone number" }),
@@ -96,231 +101,261 @@ export function AuthForm({
 		}
 	};
 
-	if (view === "otp") {
-		return (
-			<motion.div
-				key="otp-content"
-				className="relative z-[5] flex w-1/2 flex-col justify-center p-12"
-				initial={{ x: -50, opacity: 0 }}
-				animate={{ x: 0, opacity: 1 }}
-				exit={{
-					x: -50,
-					opacity: 0,
-					transition: { duration: 0.3 },
-				}}
-				transition={{ duration: 0.5, delay: 0.3 }}
-			>
-				<div className="mb-10">
-					<motion.h1
-						className="mb-3 text-4xl font-semibold text-white"
-						initial={{ y: -20, opacity: 0 }}
-						animate={{ y: 0, opacity: 1 }}
-						transition={{ duration: 0.5, delay: 0.4 }}
-					>
-						Verify your phone
-					</motion.h1>
-				</div>
-
-				<motion.div
-					initial={{ opacity: 0 }}
-					animate={{ opacity: 1 }}
-					transition={{ duration: 0.5, delay: 0.6 }}
-				>
-					<InputOTPForm
-						phoneNumber={phoneNumber}
-						firstName={firstName} // Pass firstName
-						lastName={lastName} // Pass lastName
-						onVerificationSuccess={handleVerificationSuccess}
-					/>
-
-					<div className="mt-6">
-						<motion.div
-							initial={{ y: 20, opacity: 0 }}
-							animate={{ y: 0, opacity: 1 }}
-							transition={{ duration: 0.3, delay: 0.9 }}
-						>
-							<Button
-								type="button"
-								variant="link"
-								className="text-sm text-blue-400 hover:underline"
-								onClick={() => setView("form")}
-							>
-								Back to registration
-							</Button>
-						</motion.div>
-					</div>
-				</motion.div>
-			</motion.div>
-		);
-	}
-
 	return (
-		<motion.div
-			key="form-content"
-			className="relative z-[5] flex w-1/2 flex-col justify-center p-12"
-			initial={{ x: -50, opacity: 0 }}
-			animate={{ x: 0, opacity: 1 }}
-			exit={{
-				x: -50,
-				opacity: 0,
-				transition: { duration: 0.3 },
-			}}
-			transition={{ duration: 0.5, delay: 0.3 }}
-		>
-			<div className="mb-10">
-				<motion.h1
-					className="mb-3 text-4xl font-semibold text-white"
-					initial={{ y: -20, opacity: 0 }}
-					animate={{ y: 0, opacity: 1 }}
-					transition={{ duration: 0.5, delay: 0.4 }}
+		<AnimatePresence mode="wait">
+			{view === "form" && (
+				<motion.div
+					key="form-view"
+					className="relative z-[5] flex w-1/2 flex-col justify-center p-12"
+					initial={{ x: -50, opacity: 0 }}
+					animate={{ x: 0, opacity: 1 }}
+					exit={{ x: -50, opacity: 0, transition: { duration: 0.3 } }}
+					transition={{ duration: 0.5, delay: 0.3 }}
 				>
-					Ready to start your success story?
-				</motion.h1>
-				<motion.p
-					className="mb-8 text-white"
-					initial={{ y: -20, opacity: 0 }}
-					animate={{ y: 0, opacity: 1 }}
-					transition={{ duration: 0.5, delay: 0.5 }}
-				>
-					Signup today and start your journey to becoming a better you!
-				</motion.p>
-			</div>
-
-			<motion.div
-				className="space-y-6"
-				initial={{ opacity: 0 }}
-				animate={{ opacity: 1 }}
-				transition={{ duration: 0.5, delay: 0.6 }}
-			>
-				<Form {...form}>
-					<form onSubmit={handleSubmit} className="space-y-6">
-						<motion.div
-							className="space-y-2"
-							initial={{ y: 20, opacity: 0 }}
+					<div className="mb-6">
+						<motion.h1
+							className="mb-3 text-4xl font-semibold text-white"
+							initial={{ y: -20, opacity: 0 }}
 							animate={{ y: 0, opacity: 1 }}
-							transition={{ duration: 0.3, delay: 0.7 }}
+							transition={{ duration: 0.5, delay: 0.4 }}
 						>
-							<div className="flex gap-4">
-								<div className="flex-1">
+							Ready to start your success story?
+						</motion.h1>
+						<motion.p
+							className="mb-3 text-white"
+							initial={{ y: -20, opacity: 0 }}
+							animate={{ y: 0, opacity: 1 }}
+							transition={{ duration: 0.5, delay: 0.5 }}
+						>
+							Signup today and start your journey to becoming a better you!
+						</motion.p>
+					</div>
+
+					<motion.div
+						className="space-y-6"
+						initial={{ opacity: 0 }}
+						animate={{ opacity: 1 }}
+						transition={{ duration: 0.5, delay: 0.6 }}
+					>
+						<Form {...form}>
+							<form onSubmit={handleSubmit} className="space-y-6">
+								<motion.div
+									className="space-y-2"
+									initial={{ y: 20, opacity: 0 }}
+									animate={{ y: 0, opacity: 1 }}
+									transition={{ duration: 0.3, delay: 0.7 }}
+								>
+									<div className="flex gap-4">
+										<div className="flex-1">
+											<Label
+												className="block text-sm font-medium text-white"
+												htmlFor="firstName"
+											>
+												First name
+											</Label>
+											<input
+												id="firstName"
+												type="text"
+												className="w-full border-b border-gray-300 bg-transparent p-2 text-white placeholder:text-gray-400 focus:border-blue-500 focus:outline-none"
+												placeholder="Jane"
+												{...form.register("firstName")}
+											/>
+											<AnimatePresence initial={false}>
+												{form.formState.errors.firstName && (
+													<motion.div
+														key="firstName-error"
+														initial={{ height: 0, opacity: 0 }}
+														animate={{ height: "auto", opacity: 1 }}
+														exit={{ height: 0, opacity: 0 }}
+														transition={{ duration: 0.2, ease: "easeInOut" }}
+														className="overflow-hidden"
+													>
+														<p className="mt-2 text-sm text-red-400">
+															{form.formState.errors.firstName.message}
+														</p>
+													</motion.div>
+												)}
+											</AnimatePresence>
+										</div>
+										<div className="flex-1">
+											<Label
+												className="block text-sm font-medium text-white"
+												htmlFor="lastName"
+											>
+												Last name
+											</Label>
+											<input
+												id="lastName"
+												type="text"
+												className="w-full border-b border-gray-300 bg-transparent p-2 text-white placeholder:text-gray-400 focus:border-blue-500 focus:outline-none"
+												placeholder="Doe"
+												{...form.register("lastName")}
+											/>
+											<AnimatePresence initial={false}>
+												{form.formState.errors.lastName && (
+													<motion.div
+														key="lastName-error"
+														initial={{ height: 0, opacity: 0 }}
+														animate={{ height: "auto", opacity: 1 }}
+														exit={{ height: 0, opacity: 0 }}
+														transition={{ duration: 0.2, ease: "easeInOut" }}
+														className="overflow-hidden"
+													>
+														<p className="mt-2 text-sm text-red-400">
+															{form.formState.errors.lastName.message}
+														</p>
+													</motion.div>
+												)}
+											</AnimatePresence>
+										</div>
+									</div>
+								</motion.div>
+
+								<motion.div
+									className="space-y-2"
+									initial={{ y: 20, opacity: 0 }}
+									animate={{ y: 0, opacity: 1 }}
+									transition={{ duration: 0.3, delay: 0.8 }}
+								>
 									<Label
 										className="block text-sm font-medium text-white"
-										htmlFor="firstName"
+										htmlFor="phone"
 									>
-										First name
+										Phone number
 									</Label>
-									<Input
-										id="firstName"
-										type="text"
-										className="w-full border-b border-gray-300 bg-transparent p-2 text-white placeholder:text-gray-400 focus:border-blue-500 focus:outline-none"
-										placeholder="Jane"
-										{...form.register("firstName")}
-										required
+									<PhoneInput
+										id="phone"
+										value={form.watch("phone")}
+										international
+										defaultCountry="SE"
+										onChange={(value) =>
+											form.setValue("phone", value || "", {
+												shouldValidate: true,
+											})
+										}
+										className="rounded-none border-0 shadow-none focus:ring-0"
 									/>
-									{form.formState.errors.firstName && (
-										<p className="mt-1 text-sm text-red-400">
-											{form.formState.errors.firstName.message}
-										</p>
-									)}
-								</div>
-								<div className="flex-1">
-									<Label
-										className="block text-sm font-medium text-white"
-										htmlFor="lastName"
+									<AnimatePresence initial={false}>
+										{form.formState.errors.phone && (
+											<motion.div
+												key="phone-error"
+												initial={{ height: 0, opacity: 0 }}
+												animate={{ height: "auto", opacity: 1 }}
+												exit={{ height: 0, opacity: 0 }}
+												transition={{ duration: 0.2, ease: "easeInOut" }}
+												className="overflow-hidden"
+											>
+												<p className="text-sm text-red-400">
+													{form.formState.errors.phone.message}
+												</p>
+											</motion.div>
+										)}
+									</AnimatePresence>
+								</motion.div>
+
+								<motion.div
+									className="mt-8 flex items-center"
+									initial={{ y: 20, opacity: 0 }}
+									animate={{ y: 0, opacity: 1 }}
+									transition={{ duration: 0.3, delay: 0.9 }}
+								>
+									<div>
+										<div className="flex items-center">
+											<Checkbox
+												id="terms"
+												checked={form.watch("terms")}
+												onCheckedChange={(checked) =>
+													form.setValue("terms", checked as boolean, {
+														shouldValidate: true,
+													})
+												}
+											/>
+											<Label
+												htmlFor="terms"
+												className="ml-2 block text-sm text-white"
+											>
+												I agree to the{" "}
+												<span className="text-blue-400">
+													Terms & Conditions
+												</span>
+											</Label>
+										</div>
+										<AnimatePresence initial={false}>
+											{form.formState.errors.terms && (
+												<motion.div
+													key="terms-error"
+													initial={{ height: 0, opacity: 0 }}
+													animate={{ height: "auto", opacity: 1 }}
+													exit={{ height: 0, opacity: 0 }}
+													transition={{ duration: 0.2, ease: "easeInOut" }}
+													className="mt-1 overflow-hidden"
+												>
+													<p className="text-sm text-red-400">
+														{form.formState.errors.terms.message}
+													</p>
+												</motion.div>
+											)}
+										</AnimatePresence>
+									</div>
+								</motion.div>
+
+								<motion.div
+									initial={{ y: 20, opacity: 0 }}
+									animate={{ y: 0, opacity: 1 }}
+									transition={{ duration: 0.3, delay: 1 }}
+									whileHover={{ scale: 1.05 }}
+									whileTap={{ scale: 0.98 }}
+								>
+									<Button
+										type="submit"
+										className={primaryButtonStyles}
+										disabled={isTransitioning}
 									>
-										Last name
-									</Label>
-									<Input
-										id="lastName"
-										type="text"
-										className="w-full border-b border-gray-300 bg-transparent p-2 text-white placeholder:text-gray-400 focus:border-blue-500 focus:outline-none"
-										placeholder="Doe"
-										{...form.register("lastName")}
-										required
-									/>
-									{form.formState.errors.lastName && (
-										<p className="mt-1 text-sm text-red-400">
-											{form.formState.errors.lastName.message}
-										</p>
-									)}
-								</div>
-							</div>
-						</motion.div>
+										Sign up
+									</Button>
+								</motion.div>
+							</form>
+						</Form>
+					</motion.div>
+				</motion.div>
+			)}
 
-						<motion.div
-							className="space-y-2"
-							initial={{ y: 20, opacity: 0 }}
+			{view === "otp" && (
+				<motion.div
+					key="otp-view"
+					className="relative z-[5] flex w-1/2 flex-col justify-center p-12"
+					initial={{ x: -50, opacity: 0 }}
+					animate={{ x: 0, opacity: 1 }}
+					exit={{ x: -50, opacity: 0, transition: { duration: 0.3 } }}
+					transition={{ duration: 0.5, delay: 0.3 }}
+				>
+					<div className="mb-3">
+						<motion.h1
+							className="mb-3 text-4xl font-semibold text-white"
+							initial={{ y: -20, opacity: 0 }}
 							animate={{ y: 0, opacity: 1 }}
-							transition={{ duration: 0.3, delay: 0.8 }}
+							transition={{ duration: 0.5, delay: 0.4 }}
 						>
-							<Label
-								className="block text-sm font-medium text-white"
-								htmlFor="phone"
-							>
-								Phone number
-							</Label>
-							<PhoneInput
-								id="phone"
-								value={form.watch("phone")}
-								international
-								defaultCountry="SE"
-								onChange={(value) =>
-									form.setValue("phone", value || "", { shouldValidate: true })
-								}
-								required
-							/>
-							{form.formState.errors.phone && (
-								<p className="mt-1 text-sm text-red-400">
-									{form.formState.errors.phone.message}
-								</p>
-							)}
-						</motion.div>
+							Verify your phone
+						</motion.h1>
+					</div>
 
-						<motion.div
-							className="mt-8 flex items-center"
-							initial={{ y: 20, opacity: 0 }}
-							animate={{ y: 0, opacity: 1 }}
-							transition={{ duration: 0.3, delay: 0.9 }}
-						>
-							<Checkbox
-								id="terms"
-								className="h-4 w-4 rounded border-gray-300 text-blue-500 focus:ring-blue-500"
-								checked={form.watch("terms")}
-								onCheckedChange={(checked) =>
-									form.setValue("terms", checked === true, {
-										shouldValidate: true,
-									})
-								}
-								required
-							/>
-							<Label htmlFor="terms" className="ml-2 block text-sm text-white">
-								I agree to the{" "}
-								<span className="text-blue-400">Terms & Conditions</span>
-							</Label>
-							{form.formState.errors.terms && (
-								<p className="ml-2 text-sm text-red-400">
-									{form.formState.errors.terms.message}
-								</p>
-							)}
-						</motion.div>
-
-						<motion.div
-							initial={{ y: 20, opacity: 0 }}
-							animate={{ y: 0, opacity: 1 }}
-							transition={{ duration: 0.3, delay: 1 }}
-							whileHover={{ scale: 1.05 }}
-							whileTap={{ scale: 0.98 }}
-						>
-							<Button
-								type="submit"
-								className={primaryButtonStyles}
-								disabled={isTransitioning}
-							>
-								Sign up
-							</Button>
-						</motion.div>
-					</form>
-				</Form>
-			</motion.div>
-		</motion.div>
+					<motion.div
+						initial={{ opacity: 0 }}
+						animate={{ opacity: 1 }}
+						transition={{ duration: 0.5, delay: 0.6 }}
+						exit={{ opacity: 0, y: 20, transition: { duration: 0.3 } }}
+					>
+						<InputOTPForm
+							phoneNumber={phoneNumber}
+							firstName={firstName}
+							lastName={lastName}
+							onVerificationSuccess={handleVerificationSuccess}
+							onBackToRegistration={() => setView("form")}
+						/>
+					</motion.div>
+				</motion.div>
+			)}
+		</AnimatePresence>
 	);
 }

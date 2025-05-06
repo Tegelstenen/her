@@ -14,7 +14,7 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
 	return (
 		<html lang="en" className={"h-full w-full"}>
-			<body className={`lex h-full w-full flex-col antialiased`}>
+			<body className={"lex h-full w-full flex-col bg-black antialiased"}>
 				<div className="flex w-full grow flex-col items-center justify-center sm:px-4">
 					<BackgroundDust />
 					<nav
