@@ -12,6 +12,15 @@ import {
 
 import MovingSphere from "./moving-sphere";
 
+type Role = "user" | "assistant" | "ai";
+
+interface ConversationMessage {
+	message: string;
+	source: Role;
+}
+
+type Conversation = ReturnType<typeof useConversation>;
+
 async function requestMicrophonePermission() {
 	try {
 		await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -22,11 +31,22 @@ async function requestMicrophonePermission() {
 	}
 }
 
-async function getSignedUrl(): Promise<string> {
-	const response = await fetch("/api/signed-url");
-	if (!response.ok) {
-		throw Error("Failed to get signed url");
+async function getSignedUrl(
+	agentType: "onboarding" | "coaching",
+): Promise<string> {
+	if (!agentType) {
+		throw new Error("Agent type is required");
 	}
+
+	const response = await fetch(
+		`/api/signed-url?agentType=${encodeURIComponent(agentType)}`,
+	);
+
+	if (!response.ok) {
+		const errorData = await response.json();
+		throw Error(errorData.error || "Failed to get signed url");
+	}
+
 	const data = await response.json();
 	return data.signedUrl;
 }
@@ -35,6 +55,7 @@ async function startConversation(
 	first_name: string | undefined,
 	user_id: string | undefined,
 	conversation: Conversation,
+	handleAggregateStepInfo: () => void,
 ) {
 	try {
 		// Check if microphone permission is granted
@@ -50,54 +71,58 @@ async function startConversation(
 			"hasOnboarded",
 		);
 
-		//  Intantiate initial message and context that Agent will say and use
-		let first_message = "";
-		let context = "";
-		let stringContext = "";
-		let agenda = "";
+		// Get signed URL for ElevenLabs based on user status
+		let convId;
 		if (!hasOnboarded) {
-			agenda =
-				"First conversation; get to thoroughly understand the user's goals and challenges";
-			first_message = `Hi ${first_name}, I'm your personal coach. I'm here to help you identify goals, overcome challenges, and make meaningful progress in your personal development journey. What's one area of your life where you'd like to see growth or change?`;
-			context =
-				"First conversation; no context; get to thoroughly understand the user's goals and challenges";
-			stringContext = context;
+			const signedUrl = await getSignedUrl("onboarding");
+			convId = await conversation.startSession({
+				signedUrl,
+				dynamicVariables: { user_name: first_name ?? "" },
+				clientTools: {
+					addDataAndMoveToNextStep: () => {
+						handleAggregateStepInfo();
+					},
+				},
+			});
 		} else {
-			agenda = await getAgenda(user_id ?? "");
+			const agenda = await getAgenda(user_id ?? "");
 			const topic = await getTopic(agenda);
 			const context_query = await getContextQuery(agenda);
-			first_message = `Welcome back, ${first_name}! It's great to connect with you again. For today's conversation, I thought we might discuss ${topic}. How does that sound?`;
-			context = await getConversationContext(user_id ?? "", context_query);
+			const first_message = `Welcome back, ${first_name ?? "there"}! It's great to connect with you again. For today's conversation, I thought we might discuss ${topic}. How does that sound?`;
+			const context = await getConversationContext(
+				user_id ?? "",
+				context_query,
+			);
 			// Ensure context is a string for the agent
-			stringContext =
+			const stringContext =
 				typeof context === "string" ? context : JSON.stringify(context);
+
+			const signedUrl = await getSignedUrl("coaching");
+
+			// Prepare dynamic variables
+			const dynamicVariables = {
+				first_message,
+				user_name: first_name ?? "",
+				user_context: stringContext,
+				conversation_agenda: agenda,
+			};
+
+			convId = await conversation.startSession({
+				signedUrl,
+				dynamicVariables,
+			});
 		}
 
-		// Get signed URL for ElevenLabs
-		const signedUrl = await getSignedUrl();
-		console.log("Obtained Signed URL:", signedUrl);
-
-		// Prepare dynamic variables
-		const dynamicVariables = {
-			first_message: first_message,
-			user_name: first_name,
-			user_context: stringContext,
-			conversation_agenda: agenda,
-		};
-		console.log("Dynamic Variables for startSession:", dynamicVariables);
-
-		// Start conversation session
-		console.log("Calling conversation.startSession...");
-		const convId = await conversation.startSession({
-			signedUrl,
-			dynamicVariables: dynamicVariables,
-		});
 		console.log("conversation.startSession finished. Conversation ID:", convId);
 
 		return convId;
 	} catch (error) {
 		console.error("Failed to start conversation:", error);
-		alert("Failed to start conversation. Please try again.");
+		if (error instanceof Error) {
+			alert(`Failed to start conversation: ${error.message}`);
+		} else {
+			alert("Failed to start conversation. Please try again.");
+		}
 	}
 }
 
@@ -109,10 +134,14 @@ function handleConversationEnd() {
 export function ConvAI({
 	first_name,
 	user_id,
+	addDataAndMoveToNextStep,
 }: Readonly<{
 	first_name: string | undefined;
 	user_id: string | undefined;
+	addDataAndMoveToNextStep: (messages: Array<ConversationMessage>) => void;
 }>) {
+	let messages: Array<ConversationMessage> = [];
+
 	const conversation = useConversation({
 		onConnect: () => {
 			console.log("ElevenLabs: Connected");
@@ -129,8 +158,18 @@ export function ConvAI({
 		},
 		onMessage: (message) => {
 			console.log(message);
+			messages.push(message);
+			console.log("messages after setMessages:", messages);
 		},
 	});
+
+	const handleAggregateStepInfo = () => {
+		console.log("handleAggregateStepInfo triggered with messages:", messages);
+		// Send current chunk of messages
+		addDataAndMoveToNextStep(messages);
+		// Reset messages for next chunk
+		messages = [];
+	};
 
 	return (
 		<div className="flex items-center justify-center gap-x-4">
@@ -139,7 +178,12 @@ export function ConvAI({
 					className="group flex h-[250px] w-[250px] cursor-pointer items-center justify-center transition-shadow duration-300"
 					onClick={() => {
 						if (conversation.status !== "connected") {
-							startConversation(first_name, user_id, conversation);
+							startConversation(
+								first_name,
+								user_id,
+								conversation,
+								handleAggregateStepInfo,
+							);
 						} else {
 							conversation.endSession();
 						}
@@ -174,6 +218,7 @@ export function ConvAI({
 							: "Agent is listening"
 						: "Press sphere start conversation"}
 				</span>
+				{/* <Button onClick={handleAggregateStepInfo}>Aggregate step info</Button> */}
 			</div>
 		</div>
 	);
