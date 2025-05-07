@@ -9,7 +9,6 @@ import { z } from "zod";
 
 import { InputOTPForm } from "@/components/otp-input";
 import { PhoneInput } from "@/components/phone-input";
-import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Form } from "@/components/ui/form";
 import { Label } from "@/components/ui/label";
@@ -300,19 +299,24 @@ export function AuthForm({
 								</motion.div>
 
 								<motion.div
-									initial={{ y: 20, opacity: 0 }}
-									animate={{ y: 0, opacity: 1 }}
-									transition={{ duration: 0.3, delay: 1 }}
-									whileHover={{ scale: 1.05 }}
-									whileTap={{ scale: 0.98 }}
+									initial={{ opacity: 0, height: 0 }}
+									animate={{ opacity: 1, height: "auto" }}
+									transition={{
+										height: { duration: 0.3, delay: 0 },
+										opacity: { duration: 0.3, delay: 0.5 },
+									}}
+									className="mt-2"
 								>
-									<Button
+									<motion.button
 										type="submit"
 										className={primaryButtonStyles}
+										style={{ width: "fit-content" }}
+										whileHover={{ scale: 0.95 }}
+										whileTap={{ scale: 0.88 }}
 										disabled={isTransitioning}
 									>
 										Sign up
-									</Button>
+									</motion.button>
 								</motion.div>
 							</form>
 						</Form>
