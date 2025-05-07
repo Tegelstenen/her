@@ -1,11 +1,11 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef,useState } from "react";
 
 import { ConvAI } from "@/components/conv-ai";
 import GoalBox from "@/components/goal-box";
-import QuestionBox from "@/components/question-box";
+import QuestionBox, { QuestionBoxHandle } from "@/components/question-box";
 import { authClient } from "@/lib/auth-client";
 import {
 	getAggregatedDeadlineDescription,
@@ -51,6 +51,7 @@ async function getSession() {
 
 export default function AccountPage() {
 	const [session, setSession] = useState<Session | null>(null);
+	const questionBoxRef = useRef<QuestionBoxHandle>(null);
 
 	useEffect(() => {
 		getSession().then(setSession);
@@ -79,6 +80,11 @@ export default function AccountPage() {
 						await new Promise((resolve) => setTimeout(resolve, 30));
 					}
 				}
+
+				// After the first question is filled, trigger showing the next question
+				if (questionBoxRef.current) {
+					questionBoxRef.current.showNextQuestion(0);
+				}
 			} else if (onboardingStep === 2) {
 				const textStream = await getAggregatedDeadlineDescription(messages);
 				let deadlineText = "";
@@ -92,6 +98,11 @@ export default function AccountPage() {
 						await new Promise((resolve) => setTimeout(resolve, 30));
 					}
 				}
+
+				// After the second question is filled, trigger showing the next question
+				if (questionBoxRef.current) {
+					questionBoxRef.current.showNextQuestion(1);
+				}
 			} else if (onboardingStep === 3) {
 				const textStream = await getAggregatedTimeDescription(messages);
 				let timeText = "";
@@ -104,6 +115,11 @@ export default function AccountPage() {
 						// Add a small delay between each character
 						await new Promise((resolve) => setTimeout(resolve, 30));
 					}
+				}
+
+				// After the third question is filled, trigger showing the submit button (if it exists)
+				if (questionBoxRef.current) {
+					questionBoxRef.current.showNextQuestion(2);
 				}
 			}
 		} catch (error) {
@@ -275,9 +291,9 @@ export default function AccountPage() {
 									transition={{ delay: step === 1 ? 0.7 : 0.0 }}
 								>
 									<QuestionBox
+										ref={questionBoxRef}
 										questions={questions}
 										onSubmit={handleSubmit}
-										submitLabel="Submit"
 										isValid={Boolean(isFormValid)}
 									/>
 								</motion.div>
