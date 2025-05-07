@@ -1,12 +1,31 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef,useState } from "react";
 
 import { ConvAI } from "@/components/conv-ai";
 import GoalBox from "@/components/goal-box";
-import QuestionBox from "@/components/question-box";
+import QuestionBox, { QuestionBoxHandle } from "@/components/question-box";
 import { authClient } from "@/lib/auth-client";
+import {
+	getAggregatedDeadlineDescription,
+	getAggregatedGoalDescription,
+	getAggregatedTimeDescription,
+} from "@/lib/server/actions/conversation";
+
+type Role = "user" | "assistant" | "ai";
+
+type ConversationMessage = {
+	message: string;
+	source: Role;
+};
+
+type Session = {
+	user: {
+		id: string;
+		name: string;
+	};
+};
 
 const goalBoxData = [
 	{
@@ -32,6 +51,8 @@ async function getSession() {
 
 export default function AccountPage() {
 	const [session, setSession] = useState<Session | null>(null);
+	const questionBoxRef = useRef<QuestionBoxHandle>(null);
+
 	useEffect(() => {
 		getSession().then(setSession);
 	}, []);
@@ -39,6 +60,82 @@ export default function AccountPage() {
 		"onboarding",
 	);
 	const [step, setStep] = useState(0);
+
+	let onboardingStep = 1;
+	const addDataAndMoveToNextStep = async (
+		messages: Array<ConversationMessage>,
+	) => {
+		try {
+			console.log("Received messages to aggregate:", messages);
+			if (onboardingStep === 1) {
+				const textStream = await getAggregatedGoalDescription(messages);
+				let goalText = "";
+
+				for await (const textPart of textStream) {
+					// Split text part into individual characters
+					for (const char of textPart) {
+						goalText += char;
+						setAnswers((prev) => ({ ...prev, goal: goalText }));
+						// Add a small delay between each character
+						await new Promise((resolve) => setTimeout(resolve, 30));
+					}
+				}
+
+				// After the first question is filled, trigger showing the next question
+				if (questionBoxRef.current) {
+					questionBoxRef.current.showNextQuestion(0);
+				}
+			} else if (onboardingStep === 2) {
+				const textStream = await getAggregatedDeadlineDescription(messages);
+				let deadlineText = "";
+
+				for await (const textPart of textStream) {
+					// Split text part into individual characters
+					for (const char of textPart) {
+						deadlineText += char;
+						setAnswers((prev) => ({ ...prev, deadline: deadlineText }));
+						// Add a small delay between each character
+						await new Promise((resolve) => setTimeout(resolve, 30));
+					}
+				}
+
+				// After the second question is filled, trigger showing the next question
+				if (questionBoxRef.current) {
+					questionBoxRef.current.showNextQuestion(1);
+				}
+			} else if (onboardingStep === 3) {
+				const textStream = await getAggregatedTimeDescription(messages);
+				let timeText = "";
+
+				for await (const textPart of textStream) {
+					// Split text part into individual characters
+					for (const char of textPart) {
+						timeText += char;
+						setAnswers((prev) => ({ ...prev, time: timeText }));
+						// Add a small delay between each character
+						await new Promise((resolve) => setTimeout(resolve, 30));
+					}
+				}
+
+				// After the third question is filled, trigger showing the submit button (if it exists)
+				if (questionBoxRef.current) {
+					questionBoxRef.current.showNextQuestion(2);
+				}
+			}
+		} catch (error) {
+			console.error("Error processing description:", error);
+		}
+
+		console.log(`Step ${onboardingStep} data:`, messages);
+
+		if (onboardingStep < 3) {
+			onboardingStep += 1;
+		} else {
+			// Reset to step 1 if we reach the end
+			//  todo handle add to graphiti
+			onboardingStep = 1;
+		}
+	};
 
 	const [answers, setAnswers] = useState({
 		goal: "",
@@ -155,7 +252,11 @@ export default function AccountPage() {
 						}
 					}}
 				>
-					<ConvAI first_name={session?.user.name} user_id={session?.user.id} />
+					<ConvAI
+						first_name={session?.user.name}
+						user_id={session?.user.id}
+						addDataAndMoveToNextStep={addDataAndMoveToNextStep}
+					/>
 				</motion.div>
 
 				{flowState === "onboarding" && (
@@ -190,9 +291,9 @@ export default function AccountPage() {
 									transition={{ delay: step === 1 ? 0.7 : 0.0 }}
 								>
 									<QuestionBox
+										ref={questionBoxRef}
 										questions={questions}
 										onSubmit={handleSubmit}
-										submitLabel="Submit"
 										isValid={Boolean(isFormValid)}
 									/>
 								</motion.div>
