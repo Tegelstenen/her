@@ -102,6 +102,7 @@ async function startConversation(
 }
 
 function handleConversationEnd() {
+	// TODO: Save conversation to zep using the add conversation endpoint, not implemented to prevent cluttering the database
 	console.log("Conversation ended");
 }
 
