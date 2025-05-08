@@ -8,9 +8,11 @@ import MilestoneBox, { Milestone } from "@/components/milestone-box";
 import QuestionBox, { QuestionBoxHandle } from "@/components/question-box";
 import { authClient } from "@/lib/auth-client";
 import {
+	addConversation,
 	getAggregatedDeadlineDescription,
 	getAggregatedGoalDescription,
 	getAggregatedTimeDescription,
+	setOnboardingStatus,
 } from "@/lib/server/actions/conversation";
 
 // Extend Window interface to include our custom property
@@ -85,7 +87,6 @@ async function processStep<T extends QuestionBoxHandle>({
 	setOnboardingStep: React.Dispatch<React.SetStateAction<number>>;
 }) {
 	console.log(`Processing step ${stepNumber}...`);
-
 	// Get text stream from appropriate function
 	const textStream = await getTextStream(messages);
 	let textValue = "";
@@ -118,80 +119,90 @@ async function generateMilestones({
 	userId,
 	setFlowState,
 	setVisualsStep,
+	convId,
+	allMessages,
+	conversationAddedRef,
 }: {
 	userId?: string;
 	setFlowState: React.Dispatch<
 		React.SetStateAction<"onboarding" | "dashboard">
 	>;
 	setVisualsStep: React.Dispatch<React.SetStateAction<number>>;
+	convId?: string;
+	allMessages?: Array<ConversationMessage>;
+	conversationAddedRef: React.MutableRefObject<boolean>;
 }) {
 	console.log("*** GENERATING MILESTONES (Step 4) - BEGIN ***");
 	console.log("User ID:", userId);
+	console.log("Conversation ID:", convId);
+	console.log("All messages count:", allMessages?.length);
+
+	// Important: Do this once at the beginning to ensure we don't have any race conditions
+	// If we have successfully added this conversation already, skip adding it again
+	if (conversationAddedRef.current) {
+		console.log(
+			"Step 4: Conversation was already added in a previous call, skipping add",
+		);
+	}
 
 	try {
-		// Todo Actually generate milestones here
-
-		// Wait for the agent to finish speaking
-		console.log("Step 4: Waiting for agent to finish speaking");
-
-		// Create a function to check if agent is done speaking
-		const waitForAgentToFinishSpeaking = () => {
-			return new Promise<void>((resolve) => {
-				// Function to check agent speaking status
-				const checkAgentStatus = () => {
-					// Get the custom event status from window
-					const agentIsSpeaking = window.__agentIsSpeaking;
-
-					if (agentIsSpeaking === false) {
-						console.log("Step 4: Agent has finished speaking");
-						resolve();
-					} else {
-						console.log("Step 4: Agent is still speaking, waiting...");
-						setTimeout(checkAgentStatus, 500);
-					}
-				};
-
-				// Initial delay to ensure agent has started speaking
-				setTimeout(() => {
-					// First check after delay
-					checkAgentStatus();
-				}, 1000);
-			});
-		};
-
-		// Wait up to 10 seconds for the agent to finish speaking
-		try {
-			const timeoutPromise = new Promise<void>((_, reject) => {
-				setTimeout(
-					() =>
-						reject(new Error("Timeout waiting for agent to finish speaking")),
-					10000,
-				);
-			});
-
-			await Promise.race([waitForAgentToFinishSpeaking(), timeoutPromise]);
-		} catch (error) {
-			console.warn(
-				"Step 4: Timed out waiting for agent to finish speaking, continuing anyway",
-				error,
-			);
-		}
-
-		// Add extra delay after agent finishes speaking
-		await new Promise((resolve) => setTimeout(resolve, 1000));
-
-		// End the conversation using the global event system
+		// End the conversation using the global event system, but only if it hasn't been ended already
+		await new Promise((resolve) => setTimeout(resolve, 500));
 		console.log("Step 4: Dispatching endConversation event");
 		const endConversationEvent = new CustomEvent("endConversation");
 		window.dispatchEvent(endConversationEvent);
 		console.log("Step 4: endConversation event dispatched");
+
+		// Todo Actually generate milestones here
+
+		// Try to add conversation to database if it hasn't been added already
+		if (convId && userId && !conversationAddedRef.current) {
+			console.log(
+				"Step 4: Adding conversation with ID:",
+				convId,
+				"for user:",
+				userId,
+				"with allMessages:",
+				allMessages,
+			);
+			try {
+				await addConversation(convId, userId, allMessages);
+				console.log("Step 4: Successfully added conversation");
+				// Mark the conversation as added IMMEDIATELY after the successful call
+				conversationAddedRef.current = true;
+			} catch (convError) {
+				// Check if the error is because the session already exists
+				const errorMessage =
+					convError instanceof Error ? convError.message : String(convError);
+				if (errorMessage.includes("session already exists")) {
+					console.log("Step 4: Session already exists, marking as added");
+					conversationAddedRef.current = true;
+				} else {
+					// Log the error but continue with the process
+					console.error(
+						"Step 4: Failed to add conversation, but continuing:",
+						convError,
+					);
+				}
+			}
+		} else if (!conversationAddedRef.current) {
+			if (!convId) {
+				console.error(
+					"Step 4: Conversation ID is undefined when trying to add conversation",
+				);
+			} else if (!userId) {
+				console.error(
+					"Step 4: User ID is undefined when trying to add conversation",
+				);
+			}
+		}
 
 		// Set onboarding status to complete if userId exists
 		if (userId) {
 			try {
 				console.log("Step 4: Setting hasOnboarded to true for user:", userId);
 				// Uncomment this when the server action is fixed
-				// await setOnboardingStatus(userId, { hasOnboarded: true });
+				await setOnboardingStatus(userId, { hasOnboarded: true });
 				console.log("Step 4: Successfully set hasOnboarded to true");
 			} catch (statusError) {
 				console.error("Error setting onboarding status:", statusError);
@@ -229,6 +240,8 @@ async function getSession() {
 export default function AccountPage() {
 	const [session, setSession] = useState<UserSession | null>(null);
 	const questionBoxRef = useRef<QuestionBoxHandle>(null);
+	// Add a ref to track if conversation was already added
+	const conversationAddedRef = useRef(false);
 
 	useEffect(() => {
 		getSession().then(setSession);
@@ -384,11 +397,15 @@ export default function AccountPage() {
 
 	const addDataAndMoveToNextStep = async (
 		messages: Array<ConversationMessage>,
+		convId?: string,
+		allMessages?: Array<ConversationMessage>,
 	) => {
 		try {
 			console.log("Received messages to aggregate:", messages);
 			console.log("Current onboarding step (state):", onboardingStep);
 			console.log("Current onboarding step (ref):", currentStepRef.current);
+			console.log("Conversation ID:", convId);
+			console.log("All messages received:", allMessages?.length);
 
 			if (currentStepRef.current === 1) {
 				await processStep({
@@ -431,12 +448,17 @@ export default function AccountPage() {
 					setOnboardingStep,
 				});
 
-				// After step 3 is complete and we've updated to step 4, immediately call generateMilestones
+				// After step 3 is complete and we've updated to step 4, proceed to generateMilestones
 				console.log("Step 3 complete, proceeding to generateMilestones");
+
+				// Continue with milestone generation - conversation adding is now handled inside generateMilestones
 				await generateMilestones({
 					userId: session?.user.id,
 					setFlowState,
 					setVisualsStep,
+					convId,
+					allMessages,
+					conversationAddedRef,
 				});
 			} else if (currentStepRef.current === 4) {
 				// If we're already at step 4 (just in case), make sure we run generateMilestones
@@ -444,6 +466,9 @@ export default function AccountPage() {
 					userId: session?.user.id,
 					setFlowState,
 					setVisualsStep,
+					convId,
+					allMessages,
+					conversationAddedRef,
 				});
 			}
 		} catch (error) {

@@ -188,17 +188,66 @@ export async function updateUser(
 }
 
 // Add a conversation
-export async function addConversation(sessionId: string, userId: string) {
-	const response = await fetch(
-		`https://tegelstenen--her-add-conversation.modal.run?session_id=${sessionId}&user_id=${userId}`,
-		{ method: "GET" },
-	);
+export async function addConversation(
+	sessionId: string,
+	userId: string,
+	allMessages?: ConversationMessage[],
+) {
+	try {
+		console.log("Adding conversation:", { sessionId, userId });
 
-	if (!response.ok) {
-		throw new Error("Failed to add conversation");
+		// Validate input parameters
+		if (!sessionId) {
+			console.error("Session ID is empty or undefined");
+			throw new Error("Session ID is required");
+		}
+
+		if (!userId) {
+			console.error("User ID is empty or undefined");
+			throw new Error("User ID is required");
+		}
+
+		// Base URL
+		const url = `https://tegelstenen--her-add-conversation.modal.run?session_id=${encodeURIComponent(sessionId)}&user_id=${encodeURIComponent(userId)}${allMessages && allMessages.length > 0 ? `&messages=${encodeURIComponent(JSON.stringify(allMessages))}` : ""}`;
+
+		// If messages are provided, add them to the request
+		let options: RequestInit = { method: "GET" };
+
+		if (allMessages && allMessages.length > 0) {
+			// If we have messages, use POST instead of GET
+			options = {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({ messages: allMessages }),
+			};
+		}
+
+		console.log("Calling API:", url, "with options:", options.method);
+
+		const response = await fetch(url, options);
+
+		if (!response.ok) {
+			const errorText = await response.text().catch(() => "Unknown error");
+			console.error("API error:", {
+				status: response.status,
+				statusText: response.statusText,
+				error: errorText,
+			});
+
+			throw new Error(
+				`Failed to add conversation: ${response.status} ${response.statusText} - ${errorText}`,
+			);
+		}
+
+		const result = await response.json();
+		console.log("Conversation added successfully:", result);
+		return result;
+	} catch (error) {
+		console.error("Error in addConversation:", error);
+		throw error;
 	}
-
-	return response.json();
 }
 
 // Get context from a session

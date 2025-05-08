@@ -4,6 +4,7 @@ import { useConversation } from "@11labs/react";
 import React from "react";
 
 import {
+	addConversation,
 	getAgenda,
 	getContextQuery,
 	getConversationContext,
@@ -63,7 +64,7 @@ async function startConversation(
 	first_name: string | undefined,
 	user_id: string | undefined,
 	conversation: Conversation,
-	handleAggregateStepInfo: () => void,
+	handleAggregateStepInfo: (convId: string) => void,
 ) {
 	try {
 		// Check if microphone permission is granted
@@ -80,7 +81,7 @@ async function startConversation(
 		);
 
 		// Get signed URL for ElevenLabs based on user status
-		let convId;
+		let convId: string | undefined;
 		if (!hasOnboarded) {
 			const signedUrl = await getSignedUrl("onboarding");
 			convId = await conversation.startSession({
@@ -88,7 +89,13 @@ async function startConversation(
 				dynamicVariables: { user_name: first_name ?? "" },
 				clientTools: {
 					move_to_next_step: async () => {
-						await handleAggregateStepInfo();
+						if (convId) {
+							await handleAggregateStepInfo(convId);
+						} else {
+							console.error(
+								"Conversation ID is undefined in move_to_next_step",
+							);
+						}
 					},
 				},
 			});
@@ -148,9 +155,16 @@ export function ConvAI({
 	user_id: string | undefined;
 	addDataAndMoveToNextStep: (
 		messages: Array<ConversationMessage>,
+		convId?: string,
+		allMessages?: Array<ConversationMessage>,
 	) => Promise<void>;
 }>) {
 	let messages: Array<ConversationMessage> = [];
+	const [convId, setConvId] = React.useState<string | undefined>(undefined);
+	// Use a ref for allMessages to ensure it persists across component re-renders
+	const allMessagesRef = React.useRef<Array<ConversationMessage>>([]);
+	// Use a ref to track if the user has completed onboarding
+	const [hasOnboarded, setHasOnboarded] = React.useState<boolean>(false);
 
 	const conversation = useConversation({
 		onConnect: () => {
@@ -169,7 +183,9 @@ export function ConvAI({
 		onMessage: (message) => {
 			console.log(message);
 			messages.push(message);
-			console.log("messages after setMessages:", messages);
+			allMessagesRef.current.push(message);
+			console.log("messages after push:", messages);
+			console.log("allMessages array length:", allMessagesRef.current.length);
 		},
 	});
 
@@ -184,12 +200,19 @@ export function ConvAI({
 		}
 	}, [conversation.isSpeaking, conversation.status]);
 
-	const handleAggregateStepInfo = async () => {
+	const handleAggregateStepInfo = async (currentConvId: string) => {
 		console.log("handleAggregateStepInfo triggered with messages:", messages);
-		// Send current chunk of messages
-		await addDataAndMoveToNextStep(messages);
+		console.log("Using conversation ID:", currentConvId);
+		console.log("All messages array:", allMessagesRef.current);
+		// Send current chunk of messages with the conversation ID and all messages
+		await addDataAndMoveToNextStep(
+			messages,
+			currentConvId,
+			allMessagesRef.current,
+		);
 		// Reset messages for next chunk
 		messages = [];
+		// Don't reset allMessages as we want to keep the entire conversation history
 	};
 
 	// Add event listener for ending conversation
@@ -221,6 +244,57 @@ export function ConvAI({
 		// Only re-run this effect if conversation.endSession changes, not the entire conversation object
 	}, [conversation.endSession]);
 
+	// Check onboarding status when component mounts
+	React.useEffect(() => {
+		async function checkOnboardingStatus() {
+			if (user_id) {
+				const onboardingStatus = await getOnboardingStatus(
+					user_id,
+					"hasOnboarded",
+				);
+				setHasOnboarded(!!onboardingStatus);
+				console.log("User onboarding status:", onboardingStatus);
+			}
+		}
+
+		checkOnboardingStatus();
+	}, [user_id]);
+
+	async function initConversation() {
+		try {
+			// Reset allMessages array when starting a new conversation
+			allMessagesRef.current = [];
+
+			const id = await startConversation(
+				first_name,
+				user_id,
+				conversation,
+				handleAggregateStepInfo,
+			);
+			if (id) {
+				setConvId(id);
+			}
+		} catch (error) {
+			console.error("Failed to initialize conversation:", error);
+		}
+	}
+
+	async function handleManualEndSession() {
+		// Only add conversation if the user has completed onboarding
+		if (hasOnboarded && convId && user_id) {
+			try {
+				console.log("User ended conversation, saving to database");
+				await addConversation(convId, user_id, allMessagesRef.current);
+				console.log("Conversation saved successfully");
+			} catch (error) {
+				console.error("Failed to save conversation:", error);
+			}
+		}
+
+		// End the session in all cases
+		conversation.endSession();
+	}
+
 	return (
 		<div className="flex items-center justify-center gap-x-4">
 			<div className="flex flex-col items-center text-center">
@@ -228,14 +302,9 @@ export function ConvAI({
 					className="group flex h-[250px] w-[250px] cursor-pointer items-center justify-center transition-shadow duration-300"
 					onClick={() => {
 						if (conversation.status !== "connected") {
-							startConversation(
-								first_name,
-								user_id,
-								conversation,
-								handleAggregateStepInfo,
-							);
+							initConversation();
 						} else {
-							conversation.endSession();
+							handleManualEndSession();
 						}
 					}}
 					title={
@@ -268,7 +337,6 @@ export function ConvAI({
 							: "Agent is listening"
 						: "Press sphere start conversation"}
 				</span>
-				{/* <Button onClick={handleAggregateStepInfo}>Aggregate step info</Button> */}
 			</div>
 		</div>
 	);
