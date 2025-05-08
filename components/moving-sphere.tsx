@@ -239,7 +239,8 @@ export type MovingSphereStatus =
 	| "disconnected"
 	| "connected"
 	| "agentlistening"
-	| "agentspeaking";
+	| "agentspeaking"
+	| "agentwaiting";
 
 interface MovingSphereProps {
 	width?: string;
@@ -306,6 +307,21 @@ const SPHERE_PROFILES = {
 		uDisplacementStrength: 0.19,
 		uFresnelOffset: -0.8,
 		uFresnelMultiplier: 3.0,
+		uFresnelPower: 2.4,
+	},
+	agentwaiting: {
+		uLightAColor: "#EDBB99",
+		uLightAPosition: [1, 1, 1],
+		uLightAIntensity: 2,
+		uLightBColor: "#EDBB99",
+		uLightBPosition: [-1, -1, -1],
+		uLightBIntensity: 2,
+		uDistortionFrequency: 2.2,
+		uDistortionStrength: 0.14,
+		uDisplacementFrequency: 1.4,
+		uDisplacementStrength: 0.19,
+		uFresnelOffset: -0.8,
+		uFresnelMultiplier: 2.8,
 		uFresnelPower: 2.4,
 	},
 };

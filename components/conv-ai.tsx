@@ -172,6 +172,7 @@ export function ConvAI({
 	const allMessagesRef = React.useRef<Array<ConversationMessage>>([]);
 	// Use a ref to track if the user has completed onboarding
 	const [hasOnboarded, setHasOnboarded] = React.useState<boolean>(false);
+	const [agentWaiting] = React.useState<boolean>(false);
 
 	const conversation = useConversation({
 		onConnect: () => {
@@ -328,9 +329,11 @@ export function ConvAI({
 					<MovingSphere
 						status={
 							conversation.status === "connected"
-								? conversation.isSpeaking
-									? "agentspeaking"
-									: "agentlistening"
+								? agentWaiting
+									? "agentwaiting"
+									: conversation.isSpeaking
+										? "agentspeaking"
+										: "agentlistening"
 								: conversation.status === "disconnected"
 									? "disconnected"
 									: "connected"
@@ -339,10 +342,12 @@ export function ConvAI({
 				</button>
 				<span className="text-white">
 					{conversation.status === "connected"
-						? conversation.isSpeaking
-							? "Agent is speaking"
-							: "Agent is listening"
-						: "Press sphere start conversation"}
+						? agentWaiting
+							? "Agent is processing"
+							: conversation.isSpeaking
+								? "Agent is speaking"
+								: "Agent is listening"
+						: "Press sphere to start conversation"}
 				</span>
 			</div>
 		</div>
