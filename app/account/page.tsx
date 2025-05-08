@@ -153,6 +153,8 @@ async function generateMilestones({
 		window.dispatchEvent(endConversationEvent);
 		console.log("Step 4: endConversation event dispatched");
 
+		// ! FOR MAX: start showing loading
+
 		// Todo Actually generate milestones here
 
 		// Try to add conversation to database if it hasn't been added already
@@ -223,6 +225,7 @@ async function generateMilestones({
 		setVisualsStep(1);
 
 		console.log("*** GENERATING MILESTONES (Step 4) - COMPLETE ***");
+		// ! FOR MAX: stop showing loading
 	} catch (step4Error) {
 		console.error("*** ERROR IN STEP 4 ***", step4Error);
 		// Failsafe - transition to dashboard even if there's an error

@@ -323,7 +323,7 @@ export async function getAgenda(user_id: string): Promise<string> {
 
 	const { text } = await generateText({
 		model: google("gemini-1.5-flash"),
-		prompt: `Given the goals of the individual below, what would you like to discuss during a conversation today with them? Respond with only the conversation agenda topics.
+		prompt: `Given the goals of the individual below, what would you like to discuss during a conversation today with them? Try to be progressive and not discuss previously touched upon topics. Respond with only the conversation agenda topics.
 		
 		### GOALS ###
 		${goalsText || "No specific goals provided."}`,
@@ -420,4 +420,10 @@ export async function text2Speach(text: string, agentType: string) {
 		output_format: "mp3_44100_128",
 	});
 	return audio;
+}
+
+export async function startCallBackTimer() {
+	console.log("Starting callback timer for 10 seconds");
+	await new Promise((resolve) => setTimeout(resolve, 10000));
+	console.log("Callback timer completed");
 }
