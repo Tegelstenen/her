@@ -1,6 +1,7 @@
 "use client";
 
 import { useConversation } from "@11labs/react";
+import React from "react";
 
 import {
 	getAgenda,
@@ -11,6 +12,13 @@ import {
 } from "@/lib/server/actions/conversation";
 
 import MovingSphere from "./moving-sphere";
+
+// Extend Window interface to include our custom property
+declare global {
+	interface Window {
+		__agentIsSpeaking?: boolean;
+	}
+}
 
 type Role = "user" | "assistant" | "ai";
 
@@ -79,8 +87,8 @@ async function startConversation(
 				signedUrl,
 				dynamicVariables: { user_name: first_name ?? "" },
 				clientTools: {
-					addDataAndMoveToNextStep: () => {
-						handleAggregateStepInfo();
+					move_to_next_step: async () => {
+						await handleAggregateStepInfo();
 					},
 				},
 			});
@@ -138,7 +146,9 @@ export function ConvAI({
 }: Readonly<{
 	first_name: string | undefined;
 	user_id: string | undefined;
-	addDataAndMoveToNextStep: (messages: Array<ConversationMessage>) => void;
+	addDataAndMoveToNextStep: (
+		messages: Array<ConversationMessage>,
+	) => Promise<void>;
 }>) {
 	let messages: Array<ConversationMessage> = [];
 
@@ -163,13 +173,53 @@ export function ConvAI({
 		},
 	});
 
-	const handleAggregateStepInfo = () => {
+	// Expose agent speaking status to window for other components to use
+	React.useEffect(() => {
+		// Add speaking status to window object
+		window.__agentIsSpeaking = conversation.isSpeaking;
+
+		// Log when speaking status changes
+		if (conversation.status === "connected") {
+			console.log(`Agent speaking status changed: ${conversation.isSpeaking}`);
+		}
+	}, [conversation.isSpeaking, conversation.status]);
+
+	const handleAggregateStepInfo = async () => {
 		console.log("handleAggregateStepInfo triggered with messages:", messages);
 		// Send current chunk of messages
-		addDataAndMoveToNextStep(messages);
+		await addDataAndMoveToNextStep(messages);
 		// Reset messages for next chunk
 		messages = [];
 	};
+
+	// Add event listener for ending conversation
+	React.useEffect(() => {
+		const handleEndConversation = () => {
+			console.log("EndConversation event received in ConvAI:", {
+				conversationStatus: conversation.status,
+				isSpeaking: conversation.isSpeaking,
+			});
+
+			if (conversation.status === "connected") {
+				console.log("Ending conversation from custom event");
+				try {
+					conversation.endSession();
+					console.log("Successfully called endSession()");
+				} catch (error) {
+					console.error("Error ending conversation:", error);
+				}
+			} else {
+				console.log("Conversation not in connected state, cannot end it");
+			}
+		};
+
+		window.addEventListener("endConversation", handleEndConversation);
+
+		return () => {
+			window.removeEventListener("endConversation", handleEndConversation);
+		};
+		// Only re-run this effect if conversation.endSession changes, not the entire conversation object
+	}, [conversation.endSession]);
 
 	return (
 		<div className="flex items-center justify-center gap-x-4">
