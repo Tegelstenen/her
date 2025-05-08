@@ -237,7 +237,6 @@ void main()
 
 export type MovingSphereStatus =
 	| "disconnected"
-	| "connected"
 	| "agentlistening"
 	| "agentspeaking"
 	| "agentwaiting";
@@ -263,21 +262,6 @@ const SPHERE_PROFILES = {
 		uFresnelOffset: -1.0,
 		uFresnelMultiplier: 3.0,
 		uFresnelPower: 2.0,
-	},
-	connected: {
-		uLightAColor: "#A7C7E7",
-		uLightAPosition: [1, 1, 1],
-		uLightAIntensity: 4,
-		uLightBColor: "#A7C7E7",
-		uLightBPosition: [-1, -1, -1],
-		uLightBIntensity: 4,
-		uDistortionFrequency: 1.2,
-		uDistortionStrength: 0.1,
-		uDisplacementFrequency: 1.2,
-		uDisplacementStrength: 0.08,
-		uFresnelOffset: -1.2,
-		uFresnelMultiplier: 2.7,
-		uFresnelPower: 2.2,
 	},
 	agentlistening: {
 		uLightAColor: "#A7C7E7",
@@ -337,7 +321,7 @@ function lerpColor(a: THREE.Color, b: THREE.Color, t: number) {
 const MovingSphere: React.FC<MovingSphereProps> = ({
 	width = "100%",
 	height = "100%",
-	status = "connected",
+	status = "disconnected",
 }) => {
 	const mountRef = useRef<HTMLDivElement | null>(null);
 	const uniformsRef = useRef<THREE.ShaderMaterial["uniforms"] | null>(null);

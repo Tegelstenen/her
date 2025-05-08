@@ -157,6 +157,7 @@ export function ConvAI({
 	first_name,
 	user_id,
 	addDataAndMoveToNextStep,
+	isLoading = false,
 }: Readonly<{
 	first_name: string | undefined;
 	user_id: string | undefined;
@@ -165,6 +166,7 @@ export function ConvAI({
 		convId?: string,
 		allMessages?: Array<ConversationMessage>,
 	) => Promise<void>;
+	isLoading?: boolean;
 }>) {
 	let messages: Array<ConversationMessage> = [];
 	const [convId, setConvId] = React.useState<string | undefined>(undefined);
@@ -173,10 +175,12 @@ export function ConvAI({
 	// Use a ref to track if the user has completed onboarding
 	const [hasOnboarded, setHasOnboarded] = React.useState<boolean>(false);
 	const [agentWaiting] = React.useState<boolean>(false);
+	const [isConnecting, setIsConnecting] = React.useState<boolean>(false);
 
 	const conversation = useConversation({
 		onConnect: () => {
 			console.log("ElevenLabs: Connected");
+			setIsConnecting(false);
 		},
 		onDisconnect: () => {
 			console.log("ElevenLabs: onDisconnect Triggered");
@@ -272,7 +276,7 @@ export function ConvAI({
 		try {
 			// Reset allMessages array when starting a new conversation
 			allMessagesRef.current = [];
-
+			setIsConnecting(true);
 			const id = await startConversation(
 				first_name,
 				user_id,
@@ -284,6 +288,7 @@ export function ConvAI({
 			}
 		} catch (error) {
 			console.error("Failed to initialize conversation:", error);
+			setIsConnecting(false);
 		}
 	}
 
@@ -328,26 +333,32 @@ export function ConvAI({
 				>
 					<MovingSphere
 						status={
-							conversation.status === "connected"
-								? agentWaiting
+							isLoading
+								? "agentwaiting"
+								: isConnecting
 									? "agentwaiting"
-									: conversation.isSpeaking
-										? "agentspeaking"
-										: "agentlistening"
-								: conversation.status === "disconnected"
-									? "disconnected"
-									: "connected"
+									: conversation.status === "connected"
+										? agentWaiting
+											? "agentwaiting"
+											: conversation.isSpeaking
+												? "agentspeaking"
+												: "agentlistening"
+										: "disconnected"
 						}
 					/>
 				</button>
 				<span className="text-white">
-					{conversation.status === "connected"
-						? agentWaiting
-							? "Agent is processing"
-							: conversation.isSpeaking
-								? "Agent is speaking"
-								: "Agent is listening"
-						: "Press sphere to start conversation"}
+					{isLoading
+						? "Processing"
+						: isConnecting
+							? "Connecting to agent"
+							: conversation.status === "connected"
+								? agentWaiting
+									? "Agent is processing"
+									: conversation.isSpeaking
+										? "Agent is speaking"
+										: "Agent is listening"
+								: "Press sphere to start conversation"}
 				</span>
 			</div>
 		</div>

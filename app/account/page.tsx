@@ -124,6 +124,7 @@ async function generateMilestones({
 	allMessages,
 	conversationAddedRef,
 	setMilestones,
+	setIsGeneratingMilestones,
 }: {
 	userId?: string;
 	setFlowState: React.Dispatch<
@@ -134,6 +135,7 @@ async function generateMilestones({
 	allMessages?: Array<ConversationMessage>;
 	conversationAddedRef: React.MutableRefObject<boolean>;
 	setMilestones: React.Dispatch<React.SetStateAction<ExtendedMilestone[]>>;
+	setIsGeneratingMilestones: React.Dispatch<React.SetStateAction<boolean>>;
 }) {
 	console.log("*** GENERATING MILESTONES (Step 4) - BEGIN ***");
 	console.log("User ID:", userId);
@@ -157,7 +159,8 @@ async function generateMilestones({
 		window.dispatchEvent(endConversationEvent);
 		console.log("Step 4: endConversation event dispatched");
 
-		// ! FOR MAX: start showing loading
+		// Set the loading state to true to show the agent waiting animation
+		setIsGeneratingMilestones(true);
 
 		// Generate milestones if we have a userId
 		if (userId) {
@@ -305,9 +308,12 @@ async function generateMilestones({
 		setVisualsStep(1);
 
 		console.log("*** GENERATING MILESTONES (Step 4) - COMPLETE ***");
-		// ! FOR MAX: stop showing loading
+		// Reset the loading state when milestone generation is complete
+		setIsGeneratingMilestones(false);
 	} catch (step4Error) {
 		console.error("*** ERROR IN STEP 4 ***", step4Error);
+		// Reset the loading state on error
+		setIsGeneratingMilestones(false);
 		// Failsafe - transition to dashboard even if there's an error
 		console.log("Step 4 (Error recovery): Transitioning to dashboard");
 		setFlowState("dashboard");
@@ -325,6 +331,8 @@ export default function AccountPage() {
 	const questionBoxRef = useRef<QuestionBoxHandle>(null);
 	// Add a ref to track if conversation was already added
 	const conversationAddedRef = useRef(false);
+	// State to track when milestones are being generated
+	const [isGeneratingMilestones, setIsGeneratingMilestones] = useState(false);
 
 	useEffect(() => {
 		getSession().then(setSession);
@@ -543,6 +551,7 @@ export default function AccountPage() {
 					allMessages,
 					conversationAddedRef,
 					setMilestones,
+					setIsGeneratingMilestones,
 				});
 			} else if (currentStepRef.current === 4) {
 				// If we're already at step 4 (just in case), make sure we run generateMilestones
@@ -554,6 +563,7 @@ export default function AccountPage() {
 					allMessages,
 					conversationAddedRef,
 					setMilestones,
+					setIsGeneratingMilestones,
 				});
 			}
 		} catch (error) {
@@ -711,6 +721,7 @@ export default function AccountPage() {
 						first_name={session?.user.name}
 						user_id={session?.user.id}
 						addDataAndMoveToNextStep={addDataAndMoveToNextStep}
+						isLoading={isGeneratingMilestones}
 					/>
 				</motion.div>
 
