@@ -9,6 +9,7 @@ import QuestionBox, { QuestionBoxHandle } from "@/components/question-box";
 import { authClient } from "@/lib/auth-client";
 import {
 	addConversation,
+	generateUserMilestones,
 	getAggregatedDeadlineDescription,
 	getAggregatedGoalDescription,
 	getAggregatedTimeDescription,
@@ -122,6 +123,7 @@ async function generateMilestones({
 	convId,
 	allMessages,
 	conversationAddedRef,
+	setMilestones,
 }: {
 	userId?: string;
 	setFlowState: React.Dispatch<
@@ -131,6 +133,7 @@ async function generateMilestones({
 	convId?: string;
 	allMessages?: Array<ConversationMessage>;
 	conversationAddedRef: React.MutableRefObject<boolean>;
+	setMilestones: React.Dispatch<React.SetStateAction<ExtendedMilestone[]>>;
 }) {
 	console.log("*** GENERATING MILESTONES (Step 4) - BEGIN ***");
 	console.log("User ID:", userId);
@@ -147,7 +150,8 @@ async function generateMilestones({
 
 	try {
 		// End the conversation using the global event system, but only if it hasn't been ended already
-		await new Promise((resolve) => setTimeout(resolve, 500));
+		// Wait for 5 seconds before ending the conversation
+		await new Promise((resolve) => setTimeout(resolve, 2000));
 		console.log("Step 4: Dispatching endConversation event");
 		const endConversationEvent = new CustomEvent("endConversation");
 		window.dispatchEvent(endConversationEvent);
@@ -155,7 +159,83 @@ async function generateMilestones({
 
 		// ! FOR MAX: start showing loading
 
-		// Todo Actually generate milestones here
+		// Generate milestones if we have a userId
+		if (userId) {
+			try {
+				console.log("Step 4: Generating milestones for user:", userId);
+				const goalData = await generateUserMilestones(userId);
+
+				if (goalData && goalData.milestones) {
+					// Transform the API milestone format to match our ExtendedMilestone format
+					const transformedMilestones: ExtendedMilestone[] =
+						goalData.milestones.map(
+							(
+								milestone: {
+									title: string;
+									description?: string;
+									expected_completion_date?: string;
+									estimated_hours?: number;
+									subtasks?: Array<{
+										description: string;
+										estimated_minutes: number;
+									}>;
+									metric?: {
+										measurement: string;
+										target_value?: number;
+									};
+								},
+								index: number,
+							) => {
+								// Create proper subtask objects with IDs
+								const subtasks =
+									milestone.subtasks?.map(
+										(
+											subtask: {
+												description: string;
+												estimated_minutes: number;
+											},
+											subtaskIndex: number,
+										) => ({
+											id: `${index + 1}.${subtaskIndex + 1}`,
+											description: subtask.description,
+											estimated_minutes: subtask.estimated_minutes,
+											completed: false,
+										}),
+									) || [];
+
+								return {
+									id: index + 1,
+									title: milestone.title,
+									description: milestone.description || "",
+									expected_completion_date:
+										milestone.expected_completion_date || "",
+									estimated_hours: milestone.estimated_hours || 0,
+									completed: false,
+									metrics: milestone.metric
+										? {
+												measurement: milestone.metric.measurement,
+												target_value: milestone.metric.target_value || 0,
+											}
+										: undefined,
+									subtasks,
+									resources: [],
+									// Add prerequisite logic based on index if needed
+									prerequisites: index > 0 ? [index] : undefined,
+								};
+							},
+						);
+
+					console.log("Step 4: Setting milestones from API data");
+					setMilestones(transformedMilestones);
+				} else {
+					console.error("Step 4: Invalid milestone data format received");
+				}
+			} catch (milestoneError) {
+				console.error("Step 4: Error generating milestones:", milestoneError);
+				// If milestone generation fails, we'll use the placeholder milestones
+				console.log("Step 4: Falling back to placeholder milestones");
+			}
+		}
 
 		// Try to add conversation to database if it hasn't been added already
 		if (convId && userId && !conversationAddedRef.current) {
@@ -462,6 +542,7 @@ export default function AccountPage() {
 					convId,
 					allMessages,
 					conversationAddedRef,
+					setMilestones,
 				});
 			} else if (currentStepRef.current === 4) {
 				// If we're already at step 4 (just in case), make sure we run generateMilestones
@@ -472,6 +553,7 @@ export default function AccountPage() {
 					convId,
 					allMessages,
 					conversationAddedRef,
+					setMilestones,
 				});
 			}
 		} catch (error) {

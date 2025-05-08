@@ -427,3 +427,56 @@ export async function startCallBackTimer() {
 	await new Promise((resolve) => setTimeout(resolve, 10000));
 	console.log("Callback timer completed");
 }
+
+// Generate milestones for a user
+export async function generateUserMilestones(userId: string) {
+	try {
+		if (!userId) {
+			console.error("No userId provided to generateUserMilestones");
+			throw new Error("User ID is required");
+		}
+
+		console.log(`Generating milestones for user ${userId}`);
+		const response = await fetch(
+			`https://tegelstenen--her-generate-milestones.modal.run?user_id=${encodeURIComponent(userId)}`,
+			{ method: "POST" },
+		);
+
+		if (!response.ok) {
+			const errorText = await response.text().catch(() => "Unknown error");
+			console.error("API error:", {
+				status: response.status,
+				statusText: response.statusText,
+				error: errorText,
+			});
+
+			throw new Error(
+				`Failed to generate milestones: ${response.status} ${response.statusText} - ${errorText}`,
+			);
+		}
+
+		const result = await response.json();
+
+		if (result.status !== "success" || !result.data) {
+			throw new Error("Invalid response format from milestone API");
+		}
+
+		// Assuming you already have the result object as shown in your log
+		const textValue = result.data.goal.output[0].content[0].text;
+		console.log("Text value:", textValue);
+
+		// If you want to parse the JSON inside the text (since it appears to be a JSON string)
+		const parsedJSON = JSON.parse(textValue);
+		console.log("Parsed JSON:", parsedJSON);
+
+		const goalDataText = result.data.goal.output[0].content[0].text;
+		console.log("Extracted text content:", goalDataText);
+		const goalData = JSON.parse(goalDataText);
+		console.log("Successfully generated milestones for user:", userId);
+
+		return goalData;
+	} catch (error) {
+		console.error("Error in generateUserMilestones:", error);
+		throw error;
+	}
+}
