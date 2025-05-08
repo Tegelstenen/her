@@ -1,4 +1,4 @@
-import { motion } from "framer-motion";
+import { AnimatePresence,motion } from "framer-motion";
 import {
 	ArrowRight,
 	BookOpen,
@@ -97,10 +97,7 @@ export default function MilestoneBox({
 
 	return (
 		<motion.div
-			className="max-h-[80vh] w-[400px] overflow-y-auto rounded-xl border border-neutral-800 bg-transparent p-6"
-			initial={{ opacity: 0, y: 20 }}
-			animate={{ opacity: 1, y: 0 }}
-			exit={{ opacity: 0, y: 20 }}
+			className="max-h-[80vh] w-[600px] overflow-y-auto rounded-3xl border border-neutral-800 bg-transparent p-6"
 			style={{
 				scrollbarWidth: "thin",
 				scrollbarColor: "rgb(64, 64, 64) transparent",
@@ -128,9 +125,14 @@ export default function MilestoneBox({
 					<motion.div
 						key={milestone.id}
 						className="rounded-lg border border-neutral-800 bg-transparent p-4"
-						initial={false}
+						initial={{ opacity: 0, y: 20 }}
 						animate={{
-							height: expandedMilestone === milestone.id ? "auto" : "auto",
+							opacity: 1,
+							y: 0,
+						}}
+						transition={{
+							duration: 0.3,
+							ease: "easeInOut",
 						}}
 					>
 						{/* Milestone Header */}
@@ -173,131 +175,180 @@ export default function MilestoneBox({
 						</div>
 
 						{/* Expanded Content */}
-						{expandedMilestone === milestone.id && (
-							<motion.div
-								className="mt-4 space-y-4 border-t border-neutral-800 pt-4"
-								initial={{ opacity: 0 }}
-								animate={{ opacity: 1 }}
-								transition={{ duration: 0.2 }}
-							>
-								<p className="text-sm text-neutral-400">
-									{milestone.description}
-								</p>
+						<AnimatePresence mode="wait">
+							{expandedMilestone === milestone.id && (
+								<motion.div
+									className="mt-4 space-y-4 border-t border-neutral-800 pt-4"
+									initial={{ opacity: 0, height: 0 }}
+									animate={{ opacity: 1, height: "auto" }}
+									exit={{ opacity: 0, height: 0 }}
+									transition={{
+										duration: 0.2,
+										ease: "easeInOut",
+										opacity: { duration: 0.15 },
+									}}
+								>
+									<motion.p
+										className="text-sm text-neutral-400"
+										initial={{ opacity: 0, y: 10 }}
+										animate={{ opacity: 1, y: 0 }}
+										transition={{ delay: 0.1, duration: 0.2 }}
+									>
+										{milestone.description}
+									</motion.p>
 
-								{/* Metrics */}
-								{milestone.metrics && (
-									<div className="rounded-md bg-neutral-900/50 p-3">
-										<h4 className="mb-2 text-sm font-medium text-white">
-											Success Metrics
-										</h4>
-										<p className="text-sm text-neutral-400">
-											{milestone.metrics.measurement}
-											{milestone.metrics.target_value && (
-												<span className="ml-1 font-medium text-neutral-300">
-													(Target: {milestone.metrics.target_value})
-												</span>
+									{/* Metrics */}
+									{
+										<motion.div
+											initial={{ opacity: 0, y: 10 }}
+											animate={{ opacity: 1, y: 0 }}
+											transition={{ delay: 0.15, duration: 0.2 }}
+										>
+											{milestone.metrics && (
+												<div className="rounded-md bg-neutral-900/50 p-3">
+													<h4 className="mb-2 text-sm font-medium text-white">
+														Success Metrics
+													</h4>
+													<p className="text-sm text-neutral-400">
+														{milestone.metrics.measurement}
+														{milestone.metrics.target_value && (
+															<span className="ml-1 font-medium text-neutral-300">
+																(Target: {milestone.metrics.target_value})
+															</span>
+														)}
+													</p>
+												</div>
 											)}
-										</p>
-									</div>
-								)}
+										</motion.div>
+									}
 
-								{/* Subtasks */}
-								{milestone.subtasks && milestone.subtasks.length > 0 && (
-									<div>
-										<h4 className="mb-2 text-sm font-medium text-white">
-											Subtasks
-										</h4>
-										<div className="space-y-2">
-											{milestone.subtasks.map((subtask) => (
-												<div
-													key={subtask.id}
-													className="group flex items-center justify-between rounded-md bg-neutral-900/50 p-2 text-sm transition-colors hover:bg-neutral-800/50"
-												>
-													<div className="flex items-center gap-2">
-														<button
-															onClick={(e) => {
-																e.preventDefault();
-																handleSubtaskToggle(
-																	milestone.id,
-																	subtask.id,
-																	subtask.completed,
-																);
-															}}
-															className="cursor-pointer rounded-md border border-neutral-700 p-1 hover:bg-neutral-800"
-														>
-															<CheckCircle
-																size={16}
-																className={`transition-colors duration-200 ${subtask.completed ? "text-green-500" : "text-neutral-600"}`}
-															/>
-														</button>
-														<span
-															className={`text-neutral-300 ${subtask.completed ? "text-neutral-500 line-through" : ""}`}
-														>
-															{subtask.description}
-														</span>
-													</div>
-													<span className="text-neutral-500">
-														{Math.round((subtask.estimated_minutes / 60) * 10) /
-															10}
-														h
-													</span>
-												</div>
-											))}
-										</div>
-									</div>
-								)}
-
-								{/* Resources */}
-								{milestone.resources && milestone.resources.length > 0 && (
-									<div>
-										<h4 className="mb-2 text-sm font-medium text-white">
-											Resources
-										</h4>
-										<div className="space-y-2">
-											{milestone.resources.map((resource, idx) => (
-												<div
-													key={idx}
-													className="flex items-center gap-2 rounded-md bg-neutral-900/50 p-2 text-sm"
-												>
-													<BookOpen size={14} className="text-neutral-500" />
-													<span className="text-neutral-300">
-														{resource.description}
-													</span>
-												</div>
-											))}
-										</div>
-									</div>
-								)}
-
-								{/* Prerequisites */}
-								{milestone.prerequisites &&
-									milestone.prerequisites.length > 0 && (
-										<div>
-											<h4 className="mb-2 text-sm font-medium text-white">
-												Prerequisites
-											</h4>
-											<div className="flex flex-wrap gap-2">
-												{milestone.prerequisites.map((prereqId) => {
-													const prereq = milestones.find(
-														(m) => m.id === prereqId,
-													);
-													return (
-														prereq && (
+									{/* Subtasks */}
+									{
+										<motion.div
+											initial={{ opacity: 0, y: 10 }}
+											animate={{ opacity: 1, y: 0 }}
+											transition={{ delay: 0.2, duration: 0.2 }}
+										>
+											{milestone.subtasks && milestone.subtasks.length > 0 && (
+												<div>
+													<h4 className="mb-2 text-sm font-medium text-white">
+														Subtasks
+													</h4>
+													<div className="space-y-2">
+														{milestone.subtasks.map((subtask) => (
 															<div
-																key={prereqId}
-																className="flex items-center gap-1 rounded-md bg-neutral-900/50 p-2 text-sm text-neutral-400"
+																key={subtask.id}
+																className="group flex items-center justify-between rounded-md bg-neutral-900/50 p-2 text-sm transition-colors hover:bg-neutral-800/50"
 															>
-																<ArrowRight size={14} />
-																<span>{prereq.title}</span>
+																<div className="flex items-center gap-2">
+																	<button
+																		onClick={(e) => {
+																			e.preventDefault();
+																			handleSubtaskToggle(
+																				milestone.id,
+																				subtask.id,
+																				subtask.completed,
+																			);
+																		}}
+																		className="cursor-pointer rounded-md border border-neutral-700 p-1 hover:bg-neutral-800"
+																	>
+																		<CheckCircle
+																			size={16}
+																			className={`transition-colors duration-200 ${subtask.completed ? "text-green-500" : "text-neutral-600"}`}
+																		/>
+																	</button>
+																	<span
+																		className={`text-neutral-300 ${subtask.completed ? "text-neutral-500 line-through" : ""}`}
+																	>
+																		{subtask.description}
+																	</span>
+																</div>
+																<span className="text-neutral-500">
+																	{Math.round(
+																		(subtask.estimated_minutes / 60) * 10,
+																	) / 10}
+																	h
+																</span>
 															</div>
-														)
-													);
-												})}
-											</div>
-										</div>
-									)}
-							</motion.div>
-						)}
+														))}
+													</div>
+												</div>
+											)}
+										</motion.div>
+									}
+
+									{/* Resources */}
+									{
+										<motion.div
+											initial={{ opacity: 0, y: 10 }}
+											animate={{ opacity: 1, y: 0 }}
+											transition={{ delay: 0.25, duration: 0.2 }}
+										>
+											{milestone.resources &&
+												milestone.resources.length > 0 && (
+													<div>
+														<h4 className="mb-2 text-sm font-medium text-white">
+															Resources
+														</h4>
+														<div className="space-y-2">
+															{milestone.resources.map((resource, idx) => (
+																<div
+																	key={idx}
+																	className="flex items-center gap-2 rounded-md bg-neutral-900/50 p-2 text-sm"
+																>
+																	<BookOpen
+																		size={14}
+																		className="text-neutral-500"
+																	/>
+																	<span className="text-neutral-300">
+																		{resource.description}
+																	</span>
+																</div>
+															))}
+														</div>
+													</div>
+												)}
+										</motion.div>
+									}
+
+									{/* Prerequisites */}
+									{
+										<motion.div
+											initial={{ opacity: 0, y: 10 }}
+											animate={{ opacity: 1, y: 0 }}
+											transition={{ delay: 0.3, duration: 0.2 }}
+										>
+											{milestone.prerequisites &&
+												milestone.prerequisites.length > 0 && (
+													<div>
+														<h4 className="mb-2 text-sm font-medium text-white">
+															Prerequisites
+														</h4>
+														<div className="flex flex-wrap gap-2">
+															{milestone.prerequisites.map((prereqId) => {
+																const prereq = milestones.find(
+																	(m) => m.id === prereqId,
+																);
+																return (
+																	prereq && (
+																		<div
+																			key={prereqId}
+																			className="flex items-center gap-1 rounded-md bg-neutral-900/50 p-2 text-sm text-neutral-400"
+																		>
+																			<ArrowRight size={14} />
+																			<span>{prereq.title}</span>
+																		</div>
+																	)
+																);
+															})}
+														</div>
+													</div>
+												)}
+										</motion.div>
+									}
+								</motion.div>
+							)}
+						</AnimatePresence>
 					</motion.div>
 				))}
 			</div>

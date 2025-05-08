@@ -101,7 +101,6 @@ async function startConversation(
 				},
 			});
 		} else {
-			// ! FOR MAX: start showing loading
 			const agenda = await getAgenda(user_id ?? "");
 			const topic = await getTopic(agenda);
 			const context_query = await getContextQuery(agenda);
@@ -123,7 +122,7 @@ async function startConversation(
 				user_context: stringContext,
 				conversation_agenda: agenda,
 			};
-			// ! FOR MAX: stop showing loading
+
 			convId = await conversation.startSession({
 				signedUrl,
 				dynamicVariables,
