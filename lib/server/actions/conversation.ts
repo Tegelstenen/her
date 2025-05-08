@@ -1,11 +1,21 @@
 "use server";
 
+import "dotenv/config";
+
 import { google } from "@ai-sdk/google";
-import { generateText } from "ai";
+import { generateText, streamText } from "ai";
 import { eq } from "drizzle-orm";
+import { ElevenLabsClient } from "elevenlabs";
 
 import { db } from "@/lib/server/db/db";
 import { onboarding } from "@/lib/server/db/schemas/conversation-schema";
+
+type Role = "user" | "assistant" | "ai";
+
+type ConversationMessage = {
+	message: string;
+	source: Role;
+};
 
 export async function setOnboardingStatus(
 	userId: string,
@@ -301,4 +311,64 @@ export async function getContextQuery(agenda: string): Promise<string> {
 		`,
 	});
 	return text;
+}
+
+export async function getAggregatedGoalDescription(
+	messages: Array<ConversationMessage>,
+): Promise<AsyncIterable<string>> {
+	console.log("Received messages to llm:", messages);
+	const { textStream } = streamText({
+		model: google("gemini-2.0-flash"),
+		prompt: `Given the conversation history below, what are the user's goals? Respond with a concise description of the goals. Your output will be directly printed underneath the heading "What is your goal?" (do not include this heading in your output)
+		
+		### CONVERSATION HISTORY ###
+		${messages.map((m) => `${m.source}: ${m.message}`).join("\n")}
+		`,
+	});
+	return textStream;
+}
+
+export async function getAggregatedDeadlineDescription(
+	messages: Array<ConversationMessage>,
+): Promise<AsyncIterable<string>> {
+	const { textStream } = streamText({
+		model: google("gemini-2.0-flash"),
+		prompt: `You just had a conversation with the user about their goals. The conversation history below regards the timeline / deadline, when does the user want to reach their goal? Respond with a concise description of the timeline. Your output will be directly printed underneath the heading "When do you want to reach your goal?" (do not include this heading in your output)
+		
+		### CONVERSATION HISTORY ###
+		${messages.map((m) => `${m.source}: ${m.message}`).join("\n")}
+		`,
+	});
+	return textStream;
+}
+
+export async function getAggregatedTimeDescription(
+	messages: Array<ConversationMessage>,
+): Promise<AsyncIterable<string>> {
+	const { textStream } = streamText({
+		model: google("gemini-2.0-flash"),
+		prompt: `You just had a conversation with the user about their goals and their timeline. Given the conversation history below, how much time and dedication does the user have available to work on their goal? Respond with a concise description of their availability. Your output will be directly printed underneath the heading "How much time do you have?" (do not include this heading in your output)
+		
+		### CONVERSATION HISTORY ###
+		${messages.map((m) => `${m.source}: ${m.message}`).join("\n")}
+		`,
+	});
+	return textStream;
+}
+
+export async function text2Speach(text: string, agentType: string) {
+	const agentId =
+		agentType === "onboarding"
+			? process.env.ONBOARDING_AGENT_ID
+			: process.env.COACH_AGENT_ID;
+	if (!agentId) {
+		throw new Error("Agent ID not found");
+	}
+	const client = new ElevenLabsClient();
+	const audio = await client.textToSpeech.convert(agentId, {
+		text: text,
+		model_id: "eleven_multilingual_v2",
+		output_format: "mp3_44100_128",
+	});
+	return audio;
 }

@@ -37,6 +37,12 @@ export function InputOTPForm({
 	const [error, setError] = useState<string | null>(null);
 	const [lastAttemptedOtp, setLastAttemptedOtp] = useState<string>("-");
 
+	const handleOtpChange = (value: string) => {
+		// Only allow numbers
+		const numbersOnly = value.replace(/[^0-9]/g, "");
+		setOtp(numbersOnly);
+	};
+
 	const handleVerify = useCallback(async () => {
 		if (isVerifying || otp.length !== 6) return;
 
@@ -58,14 +64,19 @@ export function InputOTPForm({
 				},
 			});
 
-			if (!verifyResult) {
-				throw new Error("OTP verification failed");
+			// Check if verification was successful
+			if (!verifyResult?.data?.status) {
+				setError("Invalid verification code. Please try again.");
+				setOtp(""); // Clear the OTP input
+				return;
 			}
 
 			// Get the session with the user ID
 			const { data: session } = await authClient.getSession();
 			if (!session?.user?.id) {
-				throw new Error("No session user ID found");
+				setError("Verification failed. Please try again.");
+				setOtp(""); // Clear the OTP input
+				return;
 			}
 
 			try {
@@ -131,7 +142,12 @@ export function InputOTPForm({
 			onVerificationSuccess();
 		} catch (error) {
 			console.error("OTP verification failed:", error);
-			setError("Verification failed.");
+			setError(
+				error instanceof Error
+					? error.message
+					: "Verification failed. Please try again.",
+			);
+			setOtp(""); // Clear the OTP input on error
 		} finally {
 			setIsVerifying(false);
 		}
@@ -190,7 +206,7 @@ export function InputOTPForm({
 					transition={{ duration: 0.3, delay: 0.5 }}
 				>
 					<div className="flex items-center">
-						<InputOTP maxLength={6} value={otp} onChange={setOtp}>
+						<InputOTP maxLength={6} value={otp} onChange={handleOtpChange}>
 							<InputOTPGroup>
 								{Array.from({ length: 6 }).map((_, i) => (
 									<InputOTPSlot key={i} index={i} />

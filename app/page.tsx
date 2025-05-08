@@ -52,14 +52,17 @@ export default function Home() {
 							<p className="mb-8 text-center font-medium text-white">
 								Your proactive partner, guiding you to your best self
 							</p>
-							<motion.button
-								className={primaryButtonStyles}
-								onClick={() => setIsLeaving(true)}
-								whileHover={{ scale: 1.05 }}
-								whileTap={{ scale: 0.98 }}
-							>
-								Get started
-							</motion.button>
+							<motion.div>
+								<motion.button
+									className={primaryButtonStyles}
+									style={{ width: "fit-content" }}
+									onClick={() => setIsLeaving(true)}
+									whileHover={{ scale: 0.95 }}
+									whileTap={{ scale: 0.88 }}
+								>
+									Get started
+								</motion.button>
+							</motion.div>
 							<p className="fixed bottom-4 left-1/2 z-50 -translate-x-1/2 text-center text-xs text-gray-400">
 								Built for the SSE x Microsoft Hackathon
 							</p>
