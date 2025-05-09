@@ -422,10 +422,28 @@ export async function text2Speach(text: string, agentType: string) {
 	return audio;
 }
 
-export async function startCallBackTimer() {
-	console.log("Starting callback timer for 10 seconds");
-	await new Promise((resolve) => setTimeout(resolve, 10000));
-	console.log("Callback timer completed");
+export async function startCallBackTimer(userId: string) {
+	console.log("Starting callback timer for 10 seconds for user:", userId);
+	try {
+		const response = await fetch(
+			`https://tegelstenen--her-call-int-ten-seconds.modal.run?user_id=${encodeURIComponent(userId)}`,
+			{
+				method: "GET",
+			},
+		);
+
+		if (!response.ok) {
+			console.error(
+				"Failed to trigger call back timer:",
+				response.status,
+				response.statusText,
+			);
+		} else {
+			console.log("Call back timer endpoint successfully triggered");
+		}
+	} catch (error) {
+		console.error("Error triggering call back timer:", error);
+	}
 }
 
 // Generate milestones for a user

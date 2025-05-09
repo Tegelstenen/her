@@ -129,7 +129,7 @@ async function startConversation(
 				dynamicVariables,
 				clientTools: {
 					call_in_ten_seconds: async () => {
-						await startCallBackTimer();
+						await startCallBackTimer(user_id ?? "");
 					},
 				},
 			});
