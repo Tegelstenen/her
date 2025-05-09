@@ -1,6 +1,7 @@
 "use client";
 
 import { useConversation } from "@11labs/react";
+import { AnimatePresence,motion } from "framer-motion";
 import React from "react";
 
 import {
@@ -14,6 +15,7 @@ import {
 } from "@/lib/server/actions/conversation";
 
 import MovingSphere from "./moving-sphere";
+import ProcessingText from "./processing-text";
 
 // Extend Window interface to include our custom property
 declare global {
@@ -346,19 +348,35 @@ export function ConvAI({
 						}
 					/>
 				</button>
-				<span className="text-white">
-					{isLoading
-						? "Processing"
-						: isConnecting
-							? "Connecting to agent"
-							: conversation.status === "connected"
-								? agentWaiting
-									? "Agent is processing"
-									: conversation.isSpeaking
-										? "Agent is speaking"
-										: "Agent is listening"
-								: "Press sphere to start conversation"}
-				</span>
+				<AnimatePresence mode="wait">
+					<motion.span
+						key={
+							isLoading
+								? "processing"
+								: isConnecting
+									? "connecting"
+									: conversation.status
+						}
+						initial={{ opacity: 0 }}
+						animate={{ opacity: 1 }}
+						exit={{ opacity: 0 }}
+						className="h-[20px] text-white"
+					>
+						{isLoading ? (
+							<ProcessingText />
+						) : isConnecting ? (
+							"Connecting to agent"
+						) : conversation.status === "connected" ? (
+							agentWaiting ? (
+								<ProcessingText />
+							) : (
+								" "
+							)
+						) : (
+							"Press sphere to start conversation"
+						)}
+					</motion.span>
+				</AnimatePresence>
 			</div>
 		</div>
 	);
