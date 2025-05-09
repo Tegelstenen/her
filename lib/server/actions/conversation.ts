@@ -432,17 +432,28 @@ export async function startCallBackTimer(userId: string) {
 			},
 		);
 
+		const data = await response.json();
+
 		if (!response.ok) {
 			console.error(
 				"Failed to trigger call back timer:",
 				response.status,
 				response.statusText,
+				data,
 			);
-		} else {
-			console.log("Call back timer endpoint successfully triggered");
+			return false;
 		}
+
+		if (data.status !== "success") {
+			console.error("Call back timer returned non-success status:", data);
+			return false;
+		}
+
+		console.log("Call back timer endpoint successfully triggered");
+		return true;
 	} catch (error) {
 		console.error("Error triggering call back timer:", error);
+		return false;
 	}
 }
 
@@ -474,7 +485,7 @@ export async function generateUserMilestones(userId: string) {
 		}
 
 		const result = await response.json();
-
+		console.log("Milestones Result: \n\n", result);
 		if (result.status !== "success" || !result.data) {
 			throw new Error("Invalid response format from milestone API");
 		}

@@ -44,6 +44,14 @@ type AnswersType = {
 	time: string;
 };
 
+type GoalState = {
+	title: string;
+	description: string;
+	target_date: string;
+	estimated_total_hours: number;
+	milestones: ExtendedMilestone[];
+};
+
 // Define SubtaskUpdate interface locally since it's not exported from milestone-box
 interface SubtaskUpdate {
 	milestoneId: number;
@@ -126,6 +134,7 @@ async function generateMilestones({
 	conversationAddedRef,
 	setMilestones,
 	setIsGeneratingMilestones,
+	setGoal,
 }: {
 	userId?: string;
 	setFlowState: React.Dispatch<
@@ -137,6 +146,7 @@ async function generateMilestones({
 	conversationAddedRef: React.MutableRefObject<boolean>;
 	setMilestones: React.Dispatch<React.SetStateAction<ExtendedMilestone[]>>;
 	setIsGeneratingMilestones: React.Dispatch<React.SetStateAction<boolean>>;
+	setGoal: React.Dispatch<React.SetStateAction<GoalState>>;
 }) {
 	console.log("*** GENERATING MILESTONES (Step 4) - BEGIN ***");
 	console.log("User ID:", userId);
@@ -155,7 +165,7 @@ async function generateMilestones({
 		setIsGeneratingMilestones(true);
 		// End the conversation using the global event system, but only if it hasn't been ended already
 		// Wait for 5 seconds before ending the conversation
-		await new Promise((resolve) => setTimeout(resolve, 6000));
+		await new Promise((resolve) => setTimeout(resolve, 4000));
 		console.log("Step 4: Dispatching endConversation event");
 		const endConversationEvent = new CustomEvent("endConversation");
 		window.dispatchEvent(endConversationEvent);
@@ -231,6 +241,15 @@ async function generateMilestones({
 
 					console.log("Step 4: Setting milestones from API data");
 					setMilestones(transformedMilestones);
+
+					// Update the goal object with data from the API
+					setGoal((prevGoal) => ({
+						...prevGoal,
+						title: goalData.title,
+						description: goalData.description,
+						target_date: goalData.target_date,
+						estimated_total_hours: goalData.estimated_total_hours,
+					}));
 				} else {
 					console.error("Step 4: Invalid milestone data format received");
 				}
@@ -578,6 +597,7 @@ export default function AccountPage() {
 					conversationAddedRef,
 					setMilestones,
 					setIsGeneratingMilestones,
+					setGoal,
 				});
 			} else if (currentStepRef.current === 4) {
 				// If we're already at step 4 (just in case), make sure we run generateMilestones
@@ -590,6 +610,7 @@ export default function AccountPage() {
 					conversationAddedRef,
 					setMilestones,
 					setIsGeneratingMilestones,
+					setGoal,
 				});
 			}
 		} catch (error) {
@@ -624,7 +645,7 @@ export default function AccountPage() {
 
 	useEffect(() => {
 		if (flowState === "dashboard") {
-			const timeout = setTimeout(() => setVisualsStep(1), 600);
+			const timeout = setTimeout(() => setVisualsStep(1), 6000);
 			return () => clearTimeout(timeout);
 		}
 	}, [flowState]);
@@ -647,13 +668,13 @@ export default function AccountPage() {
 				: -dashboardGroupShift
 			: 0;
 
-	const goal = {
+	const [goal, setGoal] = useState<GoalState>({
 		title: "Become more confident in social situations",
 		description: "Improve confidence and social skills over 3 months",
 		target_date: "2024-06-30",
 		estimated_total_hours: 40,
 		milestones: milestones as ExtendedMilestone[],
-	};
+	});
 
 	const handleSubtaskUpdate = async (update: SubtaskUpdate) => {
 		// TODO: Add API call
