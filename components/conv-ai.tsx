@@ -1,6 +1,7 @@
 "use client";
 
 import { useConversation } from "@11labs/react";
+import { AnimatePresence,motion } from "framer-motion";
 import React from "react";
 
 import {
@@ -14,6 +15,7 @@ import {
 } from "@/lib/server/actions/conversation";
 
 import MovingSphere from "./moving-sphere";
+import ProcessingText from "./processing-text";
 
 // Extend Window interface to include our custom property
 declare global {
@@ -101,7 +103,6 @@ async function startConversation(
 				},
 			});
 		} else {
-			// ! FOR MAX: start showing loading
 			const agenda = await getAgenda(user_id ?? "");
 			const topic = await getTopic(agenda);
 			const context_query = await getContextQuery(agenda);
@@ -123,7 +124,7 @@ async function startConversation(
 				user_context: stringContext,
 				conversation_agenda: agenda,
 			};
-			// ! FOR MAX: stop showing loading
+
 			convId = await conversation.startSession({
 				signedUrl,
 				dynamicVariables,
@@ -157,6 +158,7 @@ export function ConvAI({
 	first_name,
 	user_id,
 	addDataAndMoveToNextStep,
+	isLoading = false,
 }: Readonly<{
 	first_name: string | undefined;
 	user_id: string | undefined;
@@ -165,6 +167,7 @@ export function ConvAI({
 		convId?: string,
 		allMessages?: Array<ConversationMessage>,
 	) => Promise<void>;
+	isLoading?: boolean;
 }>) {
 	let messages: Array<ConversationMessage> = [];
 	const [convId, setConvId] = React.useState<string | undefined>(undefined);
@@ -173,10 +176,12 @@ export function ConvAI({
 	// Use a ref to track if the user has completed onboarding
 	const [hasOnboarded, setHasOnboarded] = React.useState<boolean>(false);
 	const [agentWaiting] = React.useState<boolean>(false);
+	const [isConnecting, setIsConnecting] = React.useState<boolean>(false);
 
 	const conversation = useConversation({
 		onConnect: () => {
 			console.log("ElevenLabs: Connected");
+			setIsConnecting(false);
 		},
 		onDisconnect: () => {
 			console.log("ElevenLabs: onDisconnect Triggered");
@@ -272,7 +277,7 @@ export function ConvAI({
 		try {
 			// Reset allMessages array when starting a new conversation
 			allMessagesRef.current = [];
-
+			setIsConnecting(true);
 			const id = await startConversation(
 				first_name,
 				user_id,
@@ -284,6 +289,7 @@ export function ConvAI({
 			}
 		} catch (error) {
 			console.error("Failed to initialize conversation:", error);
+			setIsConnecting(false);
 		}
 	}
 
@@ -328,27 +334,49 @@ export function ConvAI({
 				>
 					<MovingSphere
 						status={
-							conversation.status === "connected"
-								? agentWaiting
+							isLoading
+								? "agentwaiting"
+								: isConnecting
 									? "agentwaiting"
-									: conversation.isSpeaking
-										? "agentspeaking"
-										: "agentlistening"
-								: conversation.status === "disconnected"
-									? "disconnected"
-									: "connected"
+									: conversation.status === "connected"
+										? agentWaiting
+											? "agentwaiting"
+											: conversation.isSpeaking
+												? "agentspeaking"
+												: "agentlistening"
+										: "disconnected"
 						}
 					/>
 				</button>
-				<span className="text-white">
-					{conversation.status === "connected"
-						? agentWaiting
-							? "Agent is processing"
-							: conversation.isSpeaking
-								? "Agent is speaking"
-								: "Agent is listening"
-						: "Press sphere to start conversation"}
-				</span>
+				<AnimatePresence mode="wait">
+					<motion.span
+						key={
+							isLoading
+								? "processing"
+								: isConnecting
+									? "connecting"
+									: conversation.status
+						}
+						initial={{ opacity: 0 }}
+						animate={{ opacity: 1 }}
+						exit={{ opacity: 0 }}
+						className="h-[20px] text-white"
+					>
+						{isLoading ? (
+							<ProcessingText />
+						) : isConnecting ? (
+							"Connecting to agent"
+						) : conversation.status === "connected" ? (
+							agentWaiting ? (
+								<ProcessingText />
+							) : (
+								" "
+							)
+						) : (
+							"Press sphere to start conversation"
+						)}
+					</motion.span>
+				</AnimatePresence>
 			</div>
 		</div>
 	);

@@ -59,16 +59,17 @@ export default function AuthPage() {
 								opacity: 0,
 								transition: { duration: 0.2, ease: "easeInOut" },
 							}}
-							transition={{ duration: 0.2, ease: "easeInOut" }}
+							transition={{ duration: 0.5, ease: "easeInOut" }}
 						>
 							<div className="relative z-[5] flex h-full w-full overflow-hidden rounded-lg">
 								<AuthForm onSignUp={handleSignUp} key="auth-form" />
 								{/* Right side - Image */}
-								<div className="relative z-[5] w-1/2">
+								<div className="relative w-1/2">
 									<Image
 										src="/bath.jpg"
 										alt="Relaxation image"
 										fill
+										className="rounded-3xl"
 										style={{ objectFit: "cover" }}
 										priority
 									/>

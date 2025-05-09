@@ -13,6 +13,7 @@ import {
 	getAggregatedDeadlineDescription,
 	getAggregatedGoalDescription,
 	getAggregatedTimeDescription,
+	getOnboardingStatus,
 	setOnboardingStatus,
 } from "@/lib/server/actions/conversation";
 
@@ -124,6 +125,7 @@ async function generateMilestones({
 	allMessages,
 	conversationAddedRef,
 	setMilestones,
+	setIsGeneratingMilestones,
 }: {
 	userId?: string;
 	setFlowState: React.Dispatch<
@@ -134,6 +136,7 @@ async function generateMilestones({
 	allMessages?: Array<ConversationMessage>;
 	conversationAddedRef: React.MutableRefObject<boolean>;
 	setMilestones: React.Dispatch<React.SetStateAction<ExtendedMilestone[]>>;
+	setIsGeneratingMilestones: React.Dispatch<React.SetStateAction<boolean>>;
 }) {
 	console.log("*** GENERATING MILESTONES (Step 4) - BEGIN ***");
 	console.log("User ID:", userId);
@@ -149,15 +152,16 @@ async function generateMilestones({
 	}
 
 	try {
+		setIsGeneratingMilestones(true);
 		// End the conversation using the global event system, but only if it hasn't been ended already
 		// Wait for 5 seconds before ending the conversation
-		await new Promise((resolve) => setTimeout(resolve, 2000));
+		await new Promise((resolve) => setTimeout(resolve, 6000));
 		console.log("Step 4: Dispatching endConversation event");
 		const endConversationEvent = new CustomEvent("endConversation");
 		window.dispatchEvent(endConversationEvent);
 		console.log("Step 4: endConversation event dispatched");
 
-		// ! FOR MAX: start showing loading
+		setVisualsStep(0);
 
 		// Generate milestones if we have a userId
 		if (userId) {
@@ -305,9 +309,12 @@ async function generateMilestones({
 		setVisualsStep(1);
 
 		console.log("*** GENERATING MILESTONES (Step 4) - COMPLETE ***");
-		// ! FOR MAX: stop showing loading
+		// Reset the loading state when milestone generation is complete
+		setIsGeneratingMilestones(false);
 	} catch (step4Error) {
 		console.error("*** ERROR IN STEP 4 ***", step4Error);
+		// Reset the loading state on error
+		setIsGeneratingMilestones(false);
 		// Failsafe - transition to dashboard even if there's an error
 		console.log("Step 4 (Error recovery): Transitioning to dashboard");
 		setFlowState("dashboard");
@@ -325,9 +332,36 @@ export default function AccountPage() {
 	const questionBoxRef = useRef<QuestionBoxHandle>(null);
 	// Add a ref to track if conversation was already added
 	const conversationAddedRef = useRef(false);
+	// State to track when milestones are being generated
+	const [isGeneratingMilestones, setIsGeneratingMilestones] = useState(false);
 
 	useEffect(() => {
-		getSession().then(setSession);
+		async function initializePage() {
+			const sessionData = await getSession();
+			setSession(sessionData);
+
+			if (sessionData?.user?.id) {
+				try {
+					const onboardingStatus = await getOnboardingStatus(
+						sessionData.user.id,
+					);
+
+					if (
+						onboardingStatus &&
+						typeof onboardingStatus === "object" &&
+						"hasOnboarded" in onboardingStatus &&
+						onboardingStatus.hasOnboarded
+					) {
+						setFlowState("dashboard");
+						setVisualsStep(1);
+					}
+				} catch (error) {
+					console.error("Error checking onboarding status:", error);
+				}
+			}
+		}
+
+		initializePage();
 	}, []);
 
 	const [flowState, setFlowState] = useState<"onboarding" | "dashboard">(
@@ -543,6 +577,7 @@ export default function AccountPage() {
 					allMessages,
 					conversationAddedRef,
 					setMilestones,
+					setIsGeneratingMilestones,
 				});
 			} else if (currentStepRef.current === 4) {
 				// If we're already at step 4 (just in case), make sure we run generateMilestones
@@ -554,6 +589,7 @@ export default function AccountPage() {
 					allMessages,
 					conversationAddedRef,
 					setMilestones,
+					setIsGeneratingMilestones,
 				});
 			}
 		} catch (error) {
@@ -594,20 +630,15 @@ export default function AccountPage() {
 	}, [flowState]);
 
 	const lineWidth = 60;
-	const sphereWidth = 100;
+	const onboardingSphereWidth = 100;
+	const dashboardSphereWidth = 240;
 
 	const onboardingGroupShift = 140;
-	const dashboardGroupShift = 270;
+	const dashboardGroupShift = 370;
 
 	// Adjust sphere position based on flow state
 	const sphereXPosition =
-		visualsStep === 1
-			? flowState === "onboarding"
-				? -lineWidth
-				: -lineWidth * 1.2
-			: 0;
-
-	const sphereScale = flowState === "dashboard" ? 0.85 : 1;
+		visualsStep === 1 ? (flowState === "onboarding" ? -lineWidth : 0) : 0;
 
 	const containerXPosition =
 		visualsStep === 1
@@ -691,7 +722,6 @@ export default function AccountPage() {
 					initial={false}
 					animate={{
 						x: sphereXPosition,
-						scale: sphereScale,
 					}}
 					transition={{
 						type: "spring",
@@ -702,7 +732,7 @@ export default function AccountPage() {
 					}}
 					onClick={() => {
 						if (visualsStep === 0 && flowState === "onboarding") {
-							const timeout = setTimeout(() => setVisualsStep(1), 10000);
+							const timeout = setTimeout(() => setVisualsStep(1), 1000);
 							return () => clearTimeout(timeout);
 						}
 					}}
@@ -711,6 +741,7 @@ export default function AccountPage() {
 						first_name={session?.user.name}
 						user_id={session?.user.id}
 						addDataAndMoveToNextStep={addDataAndMoveToNextStep}
+						isLoading={isGeneratingMilestones}
 					/>
 				</motion.div>
 
@@ -729,7 +760,7 @@ export default function AccountPage() {
 								damping: 20,
 								delay: visualsStep === 1 ? 0.0 : 0.6,
 							}}
-							style={{ left: `calc(50% + ${sphereWidth / 2}px)` }}
+							style={{ left: `calc(50% + ${onboardingSphereWidth / 2}px)` }}
 						/>
 
 						<AnimatePresence mode="wait">
@@ -737,7 +768,7 @@ export default function AccountPage() {
 								<motion.div
 									className="absolute"
 									style={{
-										left: `calc(50% + ${sphereWidth / 2 + lineWidth + 20 / 2}px)`,
+										left: `calc(50% + ${onboardingSphereWidth / 2 + lineWidth + 20 / 2}px)`,
 										transform: "translate(-50%, -50%)",
 									}}
 									initial={{ opacity: 0, x: 0 }}
@@ -771,33 +802,38 @@ export default function AccountPage() {
 								delay: 0.4,
 							}}
 							style={{
-								left: `calc(50% + ${sphereWidth / 2}px)`,
+								left: `calc(50% + ${dashboardSphereWidth / 2}px)`,
 								top: `50%`,
 								transform: "translateY(-50%)",
 							}}
 						/>
 
-						<motion.div
-							className="absolute"
-							style={{
-								left: `calc(50% + ${sphereWidth / 2 + lineWidth + 20 / 2}px)`,
-								transform: "translate(-50%, -50%)",
-							}}
-							initial={{ opacity: 0, x: 0 }}
-							animate={{ opacity: 1, x: 0 }}
-							exit={{ opacity: 0, x: -100, scale: 0.9 }}
-							transition={{
-								delay: visualsStep === 1 ? 0.7 : 0.0,
-								exit: { duration: 0.3 },
-							}}
-						>
-							<MilestoneBox
-								goal={goal}
-								milestones={milestones}
-								onSubtaskUpdate={handleSubtaskUpdate}
-								onMilestoneUpdate={handleMilestoneUpdate}
-							/>
-						</motion.div>
+						<AnimatePresence mode="wait">
+							{visualsStep === 1 && flowState === "dashboard" && (
+								<motion.div
+									className="absolute"
+									style={{
+										left: `calc(50% + ${dashboardSphereWidth / 2 + lineWidth + 20 / 2}px)`,
+										transform: "translate(-50%, -50%)",
+									}}
+									initial={{ opacity: 0, x: 0 }}
+									animate={{ opacity: 1, x: 0 }}
+									exit={{ opacity: 0, x: -100, scale: 0.9 }}
+									transition={{
+										delay: visualsStep === 1 ? 0.7 : 0.0,
+										exit: { duration: 0.3 },
+									}}
+								>
+									<MilestoneBox
+										goal={goal}
+										milestones={milestones}
+										onSubtaskUpdate={handleSubtaskUpdate}
+										onMilestoneUpdate={handleMilestoneUpdate}
+										visualsStep={visualsStep}
+									/>
+								</motion.div>
+							)}
+						</AnimatePresence>
 					</>
 				)}
 			</motion.div>

@@ -237,7 +237,6 @@ void main()
 
 export type MovingSphereStatus =
 	| "disconnected"
-	| "connected"
 	| "agentlistening"
 	| "agentspeaking"
 	| "agentwaiting";
@@ -264,21 +263,6 @@ const SPHERE_PROFILES = {
 		uFresnelMultiplier: 3.0,
 		uFresnelPower: 2.0,
 	},
-	connected: {
-		uLightAColor: "#A7C7E7",
-		uLightAPosition: [1, 1, 1],
-		uLightAIntensity: 4,
-		uLightBColor: "#A7C7E7",
-		uLightBPosition: [-1, -1, -1],
-		uLightBIntensity: 4,
-		uDistortionFrequency: 1.2,
-		uDistortionStrength: 0.1,
-		uDisplacementFrequency: 1.2,
-		uDisplacementStrength: 0.08,
-		uFresnelOffset: -1.2,
-		uFresnelMultiplier: 2.7,
-		uFresnelPower: 2.2,
-	},
 	agentlistening: {
 		uLightAColor: "#A7C7E7",
 		uLightAPosition: [1, 1, 1],
@@ -303,7 +287,7 @@ const SPHERE_PROFILES = {
 		uLightBIntensity: 4,
 		uDistortionFrequency: 2.4,
 		uDistortionStrength: 0.37,
-		uDisplacementFrequency: 2.0,
+		uDisplacementFrequency: 1.6,
 		uDisplacementStrength: 0.19,
 		uFresnelOffset: -0.8,
 		uFresnelMultiplier: 3.0,
@@ -312,14 +296,14 @@ const SPHERE_PROFILES = {
 	agentwaiting: {
 		uLightAColor: "#EDBB99",
 		uLightAPosition: [1, 1, 1],
-		uLightAIntensity: 2,
-		uLightBColor: "#EDBB99",
+		uLightAIntensity: 4,
+		uLightBColor: "#2E2E2E",
 		uLightBPosition: [-1, -1, -1],
-		uLightBIntensity: 2,
-		uDistortionFrequency: 2.2,
+		uLightBIntensity: 4,
+		uDistortionFrequency: 1.2,
 		uDistortionStrength: 0.14,
 		uDisplacementFrequency: 1.4,
-		uDisplacementStrength: 0.19,
+		uDisplacementStrength: 0.08,
 		uFresnelOffset: -0.8,
 		uFresnelMultiplier: 2.8,
 		uFresnelPower: 2.4,
@@ -337,7 +321,7 @@ function lerpColor(a: THREE.Color, b: THREE.Color, t: number) {
 const MovingSphere: React.FC<MovingSphereProps> = ({
 	width = "100%",
 	height = "100%",
-	status = "connected",
+	status = "disconnected",
 }) => {
 	const mountRef = useRef<HTMLDivElement | null>(null);
 	const uniformsRef = useRef<THREE.ShaderMaterial["uniforms"] | null>(null);
@@ -545,18 +529,65 @@ const MovingSphere: React.FC<MovingSphereProps> = ({
 		}
 	}, [status]);
 
-	return (
-		<div
-			ref={mountRef}
-			style={{
-				width,
-				height,
-				display: "block",
-				position: "relative",
-				overflow: "hidden",
-			}}
-		/>
-	);
+	useEffect(() => {
+		let animationFrameId: number;
+		let animationTime = 0;
+		let lastTime = 0;
+
+		const animate = (time: number) => {
+			if (status === "agentwaiting" && uniformsRef.current) {
+				const uniforms = uniformsRef.current;
+				const deltaTime = lastTime ? (time - lastTime) / 1000 : 0;
+				animationTime += deltaTime;
+
+				const radius = 3;
+				const angleA = animationTime * 2;
+				const angleB = animationTime * 2 - Math.PI;
+
+				const lightAPos = new THREE.Vector3(
+					Math.sin(angleA) * radius,
+					Math.cos(angleA) * radius,
+					3,
+				);
+				const lightDirectionA = lightAPos.clone().normalize();
+				uniforms.uLightAPosition.value.copy(lightDirectionA.multiplyScalar(8));
+
+				const lightBPos = new THREE.Vector3(
+					Math.sin(angleB) * radius,
+					Math.cos(angleB) * radius,
+					3,
+				);
+				const lightDirectionB = lightBPos.clone().normalize();
+				uniforms.uLightBPosition.value.copy(lightDirectionB.multiplyScalar(8));
+			}
+			lastTime = time;
+			animationFrameId = requestAnimationFrame(animate);
+		};
+
+		animationFrameId = requestAnimationFrame(animate);
+		return () => {
+			cancelAnimationFrame(animationFrameId);
+
+			if (uniformsRef.current && status === "agentwaiting") {
+				const defaults = SPHERE_PROFILES.agentwaiting;
+				const uniforms = uniformsRef.current;
+				uniforms.uLightAIntensity.value = defaults.uLightAIntensity;
+				uniforms.uLightBIntensity.value = defaults.uLightBIntensity;
+				uniforms.uLightAPosition.value.set(...defaults.uLightAPosition);
+				uniforms.uLightBPosition.value.set(...defaults.uLightBPosition);
+			}
+		};
+	}, [status]);
+
+	const containerStyle = {
+		width,
+		height,
+		display: "block",
+		position: "relative" as const,
+		overflow: "hidden",
+	};
+
+	return <div ref={mountRef} style={containerStyle} />;
 };
 
 export default MovingSphere;

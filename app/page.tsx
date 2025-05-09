@@ -63,9 +63,6 @@ export default function Home() {
 									Get started
 								</motion.button>
 							</motion.div>
-							<p className="fixed bottom-4 left-1/2 z-50 -translate-x-1/2 text-center text-xs text-gray-400">
-								Built for the SSE x Microsoft Hackathon
-							</p>
 						</motion.div>
 					)}
 				</AnimatePresence>
