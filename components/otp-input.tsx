@@ -193,7 +193,7 @@ export function InputOTPForm({
 		<div className="space-y-6">
 			<div className="space-y-2">
 				<motion.p
-					className="text text-white"
+					className="text mb-6 text-white"
 					initial={{ y: 20, opacity: 0 }}
 					animate={{ y: 0, opacity: 1 }}
 					transition={{ duration: 0.3, delay: 0.4 }}

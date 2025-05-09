@@ -57,7 +57,7 @@ const InputComponent = React.forwardRef<
 >(({ className, ...props }, ref) => (
 	<input
 		className={cn(
-			"w-full rounded-none border-0 border-b border-gray-300 bg-transparent p-2 pl-18 text-white shadow-none placeholder:text-gray-400 focus:border-blue-500 focus:outline-none",
+			"w-full rounded-none border-0 border-b border-gray-300 bg-transparent p-2 pl-18 text-white shadow-none [-webkit-box-shadow:0_0_0_1000px_black_inset] [-webkit-text-fill-color:white] placeholder:text-gray-400 focus:border-blue-500 focus:outline-none",
 			className,
 		)}
 		{...props}

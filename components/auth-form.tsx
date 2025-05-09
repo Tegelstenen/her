@@ -126,7 +126,7 @@ export function AuthForm({
 							animate={{ y: 0, opacity: 1 }}
 							transition={{ duration: 0.5, delay: 0.5 }}
 						>
-							Signup today and start your journey to becoming a better you!
+							Signup today and start your journey!
 						</motion.p>
 					</div>
 
@@ -155,7 +155,7 @@ export function AuthForm({
 											<input
 												id="firstName"
 												type="text"
-												className="w-full border-b border-gray-300 bg-transparent p-2 text-white placeholder:text-gray-400 focus:border-blue-500 focus:outline-none"
+												className="w-full rounded-none border-0 border-b border-gray-300 bg-transparent p-2 text-white shadow-none [-webkit-box-shadow:0_0_0_1000px_black_inset] [-webkit-text-fill-color:white] placeholder:text-gray-400 focus:border-blue-500 focus:outline-none"
 												placeholder="Jane"
 												{...form.register("firstName")}
 											/>
@@ -186,7 +186,7 @@ export function AuthForm({
 											<input
 												id="lastName"
 												type="text"
-												className="w-full border-b border-gray-300 bg-transparent p-2 text-white placeholder:text-gray-400 focus:border-blue-500 focus:outline-none"
+												className="w-full rounded-none border-0 border-b border-gray-300 bg-transparent p-2 text-white shadow-none [-webkit-box-shadow:0_0_0_1000px_black_inset] [-webkit-text-fill-color:white] placeholder:text-gray-400 focus:border-blue-500 focus:outline-none"
 												placeholder="Doe"
 												{...form.register("lastName")}
 											/>
