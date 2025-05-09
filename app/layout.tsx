@@ -28,6 +28,9 @@ export default function RootLayout({
 						</div>
 					</nav>
 					{children}
+					<p className="fixed bottom-4 left-1/2 z-50 -translate-x-1/2 text-center text-xs text-gray-400">
+						Built for the SSE x Microsoft Hackathon
+					</p>
 				</div>
 			</body>
 		</html>
